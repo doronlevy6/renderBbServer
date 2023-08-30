@@ -7,7 +7,7 @@ const balancedTeamsService = require("../services/balancedTeamsService");
 const { getIo } = require("../socket");
 
 router.get("/", async (req, res) => {
-  res.send("2000");
+  res.send("hello render");
 });
 
 router.post("/register", async (req, res) => {
