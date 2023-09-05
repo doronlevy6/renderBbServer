@@ -5,15 +5,24 @@ const setBalancedTeams = async (io) => {
   try {
     // Fetch all players and their rankings
     const result = await pool.query(
-      `SELECT n.username, AVG(pr.skill_level) as skill_level,
-       AVG(pr.scoring_ability) as scoring_ability, AVG(pr.defensive_skills) as defensive_skills,
-        AVG(pr.speed_and_agility) as speed_and_agility, AVG(pr.shooting_range) as shooting_range,
-         AVG(pr.rebound_skills) as rebound_skills
-       FROM next_game_enlistment n
-       LEFT JOIN player_rankings pr ON n.username = pr.rated_username
-       GROUP BY n.username`
+      `SELECT 
+      n.username, 
+      AVG(pr.skill_level) as skill_level,
+      AVG(pr.scoring_ability) as scoring_ability, 
+      AVG(pr.defensive_skills) as defensive_skills,
+      AVG(pr.speed_and_agility) as speed_and_agility, 
+      AVG(pr.shooting_range) as shooting_range,
+      AVG(pr.rebound_skills) as rebound_skills
+  FROM next_game_enlistment n
+  LEFT JOIN player_rankings pr ON n.username = pr.rated_username
+  WHERE pr.rater_username = 'Moshe'
+  GROUP BY n.username;
+  `
     );
     const players = result.rows;
+    console.log('\n\n\n x2',players,'\n\n\n' );
+    
+    
 
     // Filter out players with null parameters
     const validPlayers = players.filter(

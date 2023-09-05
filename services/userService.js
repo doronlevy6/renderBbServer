@@ -36,7 +36,7 @@ const loginUser = async (username, password) => {
 
 const getAllUsernames = async () => {
   try {
-    const result = await pool.query("SELECT username FROM users");
+    const result = await pool.query("SELECT username FROM users ORDER BY username ASC");
     return result.rows;
   } catch (err) {
     console.error(err);
@@ -110,7 +110,7 @@ const getPlayerRankingsByRater = async (rater_username) => {
 const getAllEnlistedUsers = async () => {
   try {
     const result = await pool.query(
-      "SELECT username FROM next_game_enlistment"
+      "SELECT username FROM next_game_enlistment  "
     );
     return result.rows.map((row) => row.username); // Return an array of usernames
   } catch (err) {
