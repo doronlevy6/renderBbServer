@@ -15,7 +15,7 @@ const setBalancedTeams = async (io) => {
       AVG(pr.rebound_skills) as rebound_skills
   FROM next_game_enlistment n
   LEFT JOIN player_rankings pr ON n.username = pr.rated_username
-  WHERE pr.rater_username = 'Moshe'
+  WHERE pr.rater_username IN ('Moshe', 'doron')
   GROUP BY n.username;
   `
     );
