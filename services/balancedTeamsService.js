@@ -1,11 +1,12 @@
 //server\services\balancedTeamsService.js
 const pool = require("../models/userModel");
 
-const setBalancedTeams = async (io) => {
+
+const setBalancedTeams = async (io, isTierMethod) => {
   try {
     // Fetch all players and their rankings
     const result = await pool.query(
-      `SELECT 
+      `SELECT   
       n.username, 
       AVG(pr.skill_level) as skill_level,
       AVG(pr.scoring_ability) as scoring_ability, 
@@ -13,16 +14,16 @@ const setBalancedTeams = async (io) => {
       AVG(pr.speed_and_agility) as speed_and_agility, 
       AVG(pr.shooting_range) as shooting_range,
       AVG(pr.rebound_skills) as rebound_skills
-  FROM next_game_enlistment n
-  LEFT JOIN player_rankings pr ON n.username = pr.rated_username
-  WHERE pr.rater_username IN ('Moshe', 'doron')
-  GROUP BY n.username;
+FROM next_game_enlistment n
+LEFT JOIN player_rankings pr ON n.username = pr.rated_username
+WHERE pr.rater_username IN ('Moshe', 'doron')
+GROUP BY n.username
   `
-    );// WHERE pr.rater_username IN ('Moshe', 'doron')
+    );
     const players = result.rows;
-    
-    
-    
+
+
+
 
     // Filter out players with null parameters
     const validPlayers = players.filter(
@@ -42,7 +43,10 @@ const setBalancedTeams = async (io) => {
 
     // Take the first 12 players
     const top12Players = validPlayers.slice(0, 12);
-    const distributedTeams = distributePlayers(top12Players);
+
+    const distributedTeams = !isTierMethod
+      ? distributePlayers(top12Players)
+      : distributePlayersTier(top12Players);
     // Distribute the valid players to the teams
     await saveTeamsToDB(distributedTeams);
     io.emit("teamsUpdated");
@@ -124,6 +128,36 @@ function distributePlayers(players) {
 
   return teams;
 }
+
+
+function distributePlayersTier(players) {
+  const numTeams = players.length === 12 ? 3 : 2; // If there are 12 players, create 3 teams; otherwise, create 2 teams
+  const teams = Array.from({ length: numTeams }, () => []);
+
+  // Function to calculate a team's total ranking
+  const teamTotalRanking = (team) =>
+    team.reduce((total, player) => total + computeTotalRanking(player), 0);
+
+  // Distribute players to the teams to balance total ranking
+  for (const player of players) {
+    // Find the team with the lowest total ranking
+    let lowestTeamIndex = 0;
+    let lowestTeamRanking = teamTotalRanking(teams[0]);
+    for (let i = 1; i < numTeams; i++) {
+      const teamRanking = teamTotalRanking(teams[i]);
+      if (teamRanking < lowestTeamRanking) {
+        lowestTeamIndex = i;
+        lowestTeamRanking = teamRanking;
+      }
+    }
+
+    // Add the player to the team with the lowest total ranking
+    teams[lowestTeamIndex].push(player);
+  }
+
+  return teams;
+}
+
 module.exports = {
   setBalancedTeams,
 };
