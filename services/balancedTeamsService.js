@@ -161,6 +161,7 @@ function distributePlayersTier(players) {
 module.exports = {
   setBalancedTeams,
 };
+
 const saveTeamsToDB = async (teams) => {
   try {
     // Convert the teams object to a JSON string
