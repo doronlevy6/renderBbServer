@@ -1,6 +1,6 @@
 // server/models/userModel.js
 
-const postgres = require('postgres');
+const postgres = require('pg');
 require('dotenv').config();
 
 let { PGHOST, PGDATABASE, PGUSER, PGPASSWORD, ENDPOINT_ID } = process.env;
