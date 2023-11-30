@@ -1,23 +1,23 @@
 // server/models/userModel.js
-
-const postgres = require('pg');
+const { Pool } = require('pg');
 require('dotenv').config();
 
 let { PGHOST, PGDATABASE, PGUSER, PGPASSWORD, ENDPOINT_ID } = process.env;
 
-const pool = postgres({
+const pool = new Pool({
   host: PGHOST,
   database: PGDATABASE,
-  username: PGUSER,
+  user: PGUSER, // 'username' should be 'user'
   password: PGPASSWORD,
   port: 5432,
-  ssl: 'require',
-  connection: {
-    options: `project=${ENDPOINT_ID}`,
+  ssl: {
+    rejectUnauthorized: false // This is for development purposes. Use true in production.
   },
+  // The 'connection' property is not standard for pg Pool, if needed, it should be implemented differently
 });
 
 module.exports = pool;
+
 
 // const { Pool } = require("pg");
 
