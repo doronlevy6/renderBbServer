@@ -11,6 +11,8 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/register", async (req, res) => {
+  console.log('\n\n\n xxx', "xxx", '\n\n\n ');
+
   const { username, password, email } = req.body;
   try {
     const user = await userService.createUser(username, password, email);
