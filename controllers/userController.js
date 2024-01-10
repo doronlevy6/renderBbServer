@@ -5,14 +5,14 @@ const router = express.Router();
 const userService = require("../services/userService");
 const balancedTeamsService = require("../services/balancedTeamsService");
 const { getIo } = require("../socket");
+const { verifyToken } = require("./verifyToken");
+const jwt = require("jsonwebtoken");
 
 router.get("/", async (req, res) => {
   res.send("2000");
 });
 
 router.post("/register", async (req, res) => {
-  console.log('\n\n\n xxx', "xxx", '\n\n\n ');
-
   const { username, password, email } = req.body;
   try {
     const user = await userService.createUser(username, password, email);
@@ -24,10 +24,19 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   const { username, password } = req.body;
+
   try {
     const user = await userService.loginUser(username, password);
+
     if (user) {
-      res.status(200).json({ success: true, user });
+      const token = jwt.sign(
+        { username: user.username, userEmail: user.email },
+        "Avinoamyakar", // Replace 'yourSecretKey' with a real secret key
+        { expiresIn: "20s" } // Token expires in 1 hour
+      );
+      console.log("\n\n\n token", token, "\n\n\n ");
+
+      res.status(200).json({ success: true, user, token });
     } else {
       res.status(401).json({ success: false, message: "Invalid credentials" });
     }
@@ -52,13 +61,16 @@ router.post("/rankings", async (req, res) => {
   const { rater_username, rankings } = req.body;
   try {
     // Filter out the rankings where not all properties (except username) are numbers between 1 and 10
-    const validRankings = rankings.filter(player => {
-      const attributes = Object.keys(player).filter(key => key !== 'username');
-      return attributes.every(key =>
-        typeof player[key] === 'number' &&
-        !isNaN(player[key]) &&
-        player[key] >= 1 &&
-        player[key] <= 10
+    const validRankings = rankings.filter((player) => {
+      const attributes = Object.keys(player).filter(
+        (key) => key !== "username"
+      );
+      return attributes.every(
+        (key) =>
+          typeof player[key] === "number" &&
+          !isNaN(player[key]) &&
+          player[key] >= 1 &&
+          player[key] <= 10
       );
     });
 
@@ -68,8 +80,6 @@ router.post("/rankings", async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
-
 
 router.get("/all-rankings/:rater_username", async (req, res) => {
   const { rater_username } = req.params;
@@ -93,10 +103,11 @@ router.get("/rankings/:username", async (req, res) => {
 });
 router.post("/set-teams", async (req, res) => {
   try {
-
-
-    const { isTierMethod } = req.body;//!
-    const teams = await balancedTeamsService.setBalancedTeams(getIo(), isTierMethod);
+    const { isTierMethod } = req.body; //!
+    const teams = await balancedTeamsService.setBalancedTeams(
+      getIo(),
+      isTierMethod
+    );
 
     res.status(200).json({ success: true });
   } catch (err) {
@@ -115,7 +126,7 @@ router.get("/enlist", async (req, res) => {
 });
 router.post("/delete-enlist", async (req, res) => {
   try {
-    const { usernames, isTierMethod } = req.body;//!
+    const { usernames, isTierMethod } = req.body; //!
     await userService.deleteEnlistedUsers(usernames);
     await balancedTeamsService.setBalancedTeams(getIo(), isTierMethod);
     res.status(200).json({ success: true });
@@ -123,14 +134,14 @@ router.post("/delete-enlist", async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-router.post("/enlist-users", async (req, res) => {
+router.post("/enlist-users", verifyToken, async (req, res) => {
   try {
-    const { usernames, isTierMethod } = req.body;//!
+    console.log("\n\n\n enlist-users", "enlist-users", "\n\n\n ");
 
+    const { usernames, isTierMethod } = req.body; //!
 
     await userService.enlistUsersBox(usernames);
     await balancedTeamsService.setBalancedTeams(getIo(), isTierMethod); // Pass method to function//!
-
 
     res.status(200).json({ success: true });
   } catch (err) {
