@@ -24,6 +24,7 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   const { username, password } = req.body;
+  console.log("\n\n\n login request from", username, "\n\n\n ");
 
   try {
     const user = await userService.loginUser(username, password);
