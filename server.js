@@ -17,6 +17,6 @@ io.on("connection", (socket) => {
   console.log("Client connected");
 });
 
-server.listen(8080, () => {
-  console.log("Server running on port 8080");
+server.listen(9090, () => {
+  console.log("Server running on port 9090");
 });
