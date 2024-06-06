@@ -33,7 +33,7 @@ router.post("/login", async (req, res) => {
       const token = jwt.sign(
         { username: user.username, userEmail: user.email },
         "Avinoamyakar", // Replace 'yourSecretKey' with a real secret key
-        { expiresIn: "20s" } // Token expires in 1 hour
+        { expiresIn: "20h" } // Token expires in 1 hour
       );
       console.log("\n\n\n token", token, "\n\n\n ");
 
