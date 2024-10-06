@@ -36,7 +36,9 @@ const loginUser = async (username, password) => {
 
 const getAllUsernames = async () => {
   try {
-    const result = await pool.query("SELECT username FROM users ORDER BY username ASC");
+    const result = await pool.query(
+      "SELECT username FROM users ORDER BY username ASC"
+    );
     return result.rows;
   } catch (err) {
     console.error(err);
@@ -160,6 +162,7 @@ const getTeams = async () => {
     throw err; // Propagate the error to be handled by the caller
   }
 };
+
 module.exports = {
   createUser,
   loginUser,

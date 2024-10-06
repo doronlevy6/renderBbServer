@@ -24,7 +24,7 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   const { username, password } = req.body;
-  console.log("\n\n\n login request from", username, "\n\n\n ");
+  console.log("\n\n\n login request from1", username, "\n\n\n ");
 
   try {
     const user = await userService.loginUser(username, password);
@@ -60,19 +60,44 @@ router.get("/usernames", async (req, res) => {
 
 router.post("/rankings", async (req, res) => {
   const { rater_username, rankings } = req.body;
+  console.log("Received request body:", JSON.stringify(req.body, null, 2));
+
+  // Log each element and its types
+  rankings.forEach((player, index) => {
+    console.log(`Player ${index + 1}: ${player.username}`);
+    Object.keys(player).forEach((key) => {
+      console.log(
+        ` - ${key}: value = ${player[key]}, type = ${typeof player[key]}`
+      );
+    });
+  });
   try {
     // Filter out the rankings where not all properties (except username) are numbers between 1 and 10
     const validRankings = rankings.filter((player) => {
       const attributes = Object.keys(player).filter(
         (key) => key !== "username"
       );
-      return attributes.every(
-        (key) =>
+
+      const allValid = attributes.every((key) => {
+        const isValid =
           typeof player[key] === "number" &&
           !isNaN(player[key]) &&
           player[key] >= 1 &&
-          player[key] <= 10
-      );
+          player[key] <= 10;
+
+        // If not valid, log the reason
+        if (!isValid) {
+          console.log(
+            `Player ${player.username} left out due to invalid value for ${key}: ${player[key]}. ` +
+              `Expected type: number between 1 and 10, ` +
+              `but got type: ${typeof player[key]} with value: ${player[key]}`
+          );
+        }
+
+        return isValid;
+      });
+
+      return allValid;
     });
 
     await userService.storePlayerRankings(rater_username, validRankings);
@@ -153,6 +178,15 @@ router.get("/get-teams", async (req, res) => {
   try {
     const teams = await userService.getTeams();
     res.status(200).json({ success: true, teams });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+router.get("/players-rankings-doron", async (req, res) => {
+  try {
+    const playersRankings =
+      await balancedTeamsService.getAllPlayersRankingsFromDoron();
+    res.status(200).json({ success: true, playersRankings });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

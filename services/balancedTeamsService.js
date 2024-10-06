@@ -1,7 +1,6 @@
 //server\services\balancedTeamsService.js
 const pool = require("../models/userModel");
 
-
 const setBalancedTeams = async (io, isTierMethod) => {
   try {
     // Fetch all players and their rankings
@@ -21,9 +20,6 @@ GROUP BY n.username
   `
     );
     const players = result.rows;
-
-
-
 
     // Filter out players with null parameters
     const validPlayers = players.filter(
@@ -129,7 +125,6 @@ function distributePlayers(players) {
   return teams;
 }
 
-
 function distributePlayersTier(players) {
   const numTeams = players.length === 12 ? 3 : 2; // If there are 12 players, create 3 teams; otherwise, create 2 teams
   const teams = Array.from({ length: numTeams }, () => []);
@@ -172,4 +167,29 @@ const saveTeamsToDB = async (teams) => {
   } catch (err) {
     throw err;
   }
+};
+const getAllPlayersRankingsFromDoron = async () => {
+  try {
+    const result = await pool.query(
+      `SELECT   
+  pr.rated_username AS username, 
+  AVG(pr.skill_level) AS skill_level,
+  AVG(pr.scoring_ability) AS scoring_ability, 
+  AVG(pr.defensive_skills) AS defensive_skills,
+  AVG(pr.speed_and_agility) AS speed_and_agility, 
+  AVG(pr.shooting_range) AS shooting_range,
+  AVG(pr.rebound_skills) AS rebound_skills
+FROM player_rankings pr
+WHERE pr.rater_username = 'doron'
+GROUP BY pr.rated_username`
+    );
+    return result.rows;
+  } catch (err) {
+    console.error(err);
+    throw new Error("Failed to fetch player rankings from rater 'doron'");
+  }
+};
+module.exports = {
+  setBalancedTeams,
+  getAllPlayersRankingsFromDoron, // Make sure this is added
 };
