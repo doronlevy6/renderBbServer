@@ -33,10 +33,12 @@ const createTables = async () => {
     // Create next_game_enlistment table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS next_game_enlistment (
-          username VARCHAR(255) PRIMARY KEY,
-          enlistment_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (username) REFERENCES users (username)
-      );
+    username VARCHAR(255) PRIMARY KEY,
+    enlistment_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    enlistment_order INTEGER,
+    FOREIGN KEY (username) REFERENCES users (username)
+);
+
     `);
 
     // Create game_teams table

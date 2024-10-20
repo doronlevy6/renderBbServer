@@ -112,7 +112,7 @@ const getPlayerRankingsByRater = async (rater_username) => {
 const getAllEnlistedUsers = async () => {
   try {
     const result = await pool.query(
-      "SELECT username FROM next_game_enlistment  "
+      "SELECT username FROM next_game_enlistment ORDER BY enlistment_order ASC"
     );
     return result.rows.map((row) => row.username); // Return an array of usernames
   } catch (err) {
@@ -120,6 +120,7 @@ const getAllEnlistedUsers = async () => {
     throw new Error("Failed to fetch enlisted users");
   }
 };
+
 const deleteEnlistedUsers = async (usernames) => {
   try {
     await pool.query(
@@ -131,20 +132,42 @@ const deleteEnlistedUsers = async (usernames) => {
     throw new Error("Failed to delete enlisted users");
   }
 };
+
 const enlistUsersBox = async (usernames) => {
+  console.log("Enlisting users...");
+
+  const client = await pool.connect();
   try {
+    await client.query("BEGIN");
+
+    // Fetch the current maximum enlistment_order
+    const res = await client.query(
+      "SELECT COALESCE(MAX(enlistment_order), 0) AS max_order FROM next_game_enlistment"
+    );
+    let currentOrder = res.rows[0].max_order;
+
+    // Prepare the INSERT query
+    const insertQuery = `
+      INSERT INTO next_game_enlistment (username, enlistment_order)
+      VALUES ($1, $2)
+    `;
+
     for (const username of usernames) {
-      await pool.query(
-        "INSERT INTO next_game_enlistment (username) VALUES ($1)",
-        [username]
-      );
+      currentOrder += 1;
+      await client.query(insertQuery, [username, currentOrder]);
     }
+
+    await client.query("COMMIT");
     return true; // Return true if all inserts were successful
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error(err);
     throw new Error("Failed to enlist users for next game");
+  } finally {
+    client.release();
   }
 };
+
 const getTeams = async () => {
   try {
     // Fetch the last row by ordering by game_id in descending order and limiting the result to one row
