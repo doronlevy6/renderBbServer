@@ -168,28 +168,54 @@ const saveTeamsToDB = async (teams) => {
     throw err;
   }
 };
-const getAllPlayersRankingsFromDoron = async () => {
+
+// balancedTeamsService.js
+
+const getAllPlayersRankingsFromUser = async (username) => {
   try {
     const result = await pool.query(
       `SELECT   
-  pr.rated_username AS username, 
-  AVG(pr.skill_level) AS skill_level,
-  AVG(pr.scoring_ability) AS scoring_ability, 
-  AVG(pr.defensive_skills) AS defensive_skills,
-  AVG(pr.speed_and_agility) AS speed_and_agility, 
-  AVG(pr.shooting_range) AS shooting_range,
-  AVG(pr.rebound_skills) AS rebound_skills
-FROM player_rankings pr
-WHERE pr.rater_username = 'doron'
-GROUP BY pr.rated_username`
+        pr.rated_username AS username, 
+        AVG(pr.skill_level) AS skill_level,
+        AVG(pr.scoring_ability) AS scoring_ability, 
+        AVG(pr.defensive_skills) AS defensive_skills,
+        AVG(pr.speed_and_agility) AS speed_and_agility, 
+        AVG(pr.shooting_range) AS shooting_range,
+        AVG(pr.rebound_skills) AS rebound_skills
+      FROM player_rankings pr
+      WHERE pr.rater_username = $1
+      GROUP BY pr.rated_username`,
+      [username]
     );
     return result.rows;
   } catch (err) {
     console.error(err);
-    throw new Error("Failed to fetch player rankings from rater 'doron'");
+    throw new Error(`Failed to fetch player rankings from rater '${username}'`);
   }
 };
+const getAllPlayersRankings = async () => {
+  try {
+    const result = await pool.query(
+      `SELECT   
+        pr.rated_username AS username, 
+        AVG(pr.skill_level) AS skill_level,
+        AVG(pr.scoring_ability) AS scoring_ability, 
+        AVG(pr.defensive_skills) AS defensive_skills,
+        AVG(pr.speed_and_agility) AS speed_and_agility, 
+        AVG(pr.shooting_range) AS shooting_range,
+        AVG(pr.rebound_skills) AS rebound_skills
+      FROM player_rankings pr
+      GROUP BY pr.rated_username`
+    );
+    return result.rows;
+  } catch (err) {
+    console.error(err);
+    throw new Error("Failed to fetch player rankings from all raters");
+  }
+};
+
 module.exports = {
+  getAllPlayersRankingsFromUser,
+  getAllPlayersRankings,
   setBalancedTeams,
-  getAllPlayersRankingsFromDoron, // Make sure this is added
 };

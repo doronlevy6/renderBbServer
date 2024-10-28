@@ -182,10 +182,23 @@ router.get("/get-teams", async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-router.get("/players-rankings-doron", async (req, res) => {
+// routes.js or your router file
+
+router.get("/players-rankings/:username", async (req, res) => {
+  const username = req.params.username;
   try {
     const playersRankings =
-      await balancedTeamsService.getAllPlayersRankingsFromDoron();
+      await balancedTeamsService.getAllPlayersRankingsFromUser(username);
+    res.status(200).json({ success: true, playersRankings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+// routes.js or your router file
+
+router.get("/players-rankings", async (req, res) => {
+  try {
+    const playersRankings = await balancedTeamsService.getAllPlayersRankings();
     res.status(200).json({ success: true, playersRankings });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
