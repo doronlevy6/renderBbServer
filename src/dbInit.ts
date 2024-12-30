@@ -1,8 +1,8 @@
-// server/dbInit.js
+// src/dbInit.ts
 
-const pool = require("./models/userModel");
+import pool from './models/userModel';
 
-const createTables = async () => {
+const createTables = async (): Promise<void> => {
   try {
     // Create users table
     await pool.query(`
@@ -33,12 +33,11 @@ const createTables = async () => {
     // Create next_game_enlistment table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS next_game_enlistment (
-    username VARCHAR(255) PRIMARY KEY,
-    enlistment_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    enlistment_order INTEGER,
-    FOREIGN KEY (username) REFERENCES users (username)
-);
-
+          username VARCHAR(255) PRIMARY KEY,
+          enlistment_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          enlistment_order INTEGER,
+          FOREIGN KEY (username) REFERENCES users (username)
+      );
     `);
 
     // Create game_teams table
@@ -49,10 +48,10 @@ const createTables = async () => {
       );
     `);
 
-    console.log("Tables created successfully!");
-  } catch (err) {
-    console.error("Error creating tables:", err);
+    console.log('Tables created successfully!');
+  } catch (err: any) {
+    console.error('Error creating tables:', err);
   }
 };
 
-module.exports = createTables;
+export default createTables;
