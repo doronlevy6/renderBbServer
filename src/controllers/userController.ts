@@ -155,20 +155,20 @@ router.post(
   }
 );
 
-router.get(
-  '/all-rankings/:rater_username',
-  async (req: Request<{ rater_username: string }>, res: Response) => {
-    const { rater_username } = req.params;
-    try {
-      const rankings = await userService.getPlayerRankingsByRater(
-        rater_username
-      );
-      res.status(200).json({ success: true, rankings });
-    } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
-    }
-  }
-);
+// router.get(
+//   '/all-rankings/:rater_username',
+//   async (req: Request<{ rater_username: string }>, res: Response) => {
+//     const { rater_username } = req.params;
+//     try {
+//       const rankings = await userService.getPlayerRankingsByRater(
+//         rater_username
+//       );
+//       res.status(200).json({ success: true, rankings });
+//     } catch (err: any) {
+//       res.status(500).json({ success: false, message: err.message });
+//     }
+//   }
+// );
 
 router.get(
   '/rankings/:username',
@@ -184,19 +184,19 @@ router.get(
   }
 );
 
-router.post('/set-teams', async (req: Request, res: Response) => {
-  try {
-    const { isTierMethod } = req.body as { isTierMethod: boolean };
-    const teams = await balancedTeamsService.setBalancedTeams(
-      getIo(),
-      isTierMethod
-    );
+// router.post('/set-teams', async (req: Request, res: Response) => {
+//   try {
+//     const { isTierMethod } = req.body as { isTierMethod: boolean };
+//     const teams = await balancedTeamsService.setBalancedTeams(
+//       getIo(),
+//       isTierMethod
+//     );
 
-    res.status(200).json({ success: true });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+//     res.status(200).json({ success: true });
+//   } catch (err: any) {
+//     res.status(500).json({ success: false, message: err.message });
+//   }
+// });
 
 router.get('/enlist', async (req: Request, res: Response) => {
   try {
