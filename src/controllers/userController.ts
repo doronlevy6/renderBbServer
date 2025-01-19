@@ -73,18 +73,14 @@ router.post(
   '/login',
   async (req: Request<{}, {}, LoginRequestBody>, res: Response) => {
     const { username, password } = req.body;
-    console.log('\n\n\n login request from2', username, '\n\n\n ');
-
     try {
       const user = await userService.loginUser(username, password);
-
       if (user) {
         const token = jwt.sign(
           { username: user.username, userEmail: user.email },
           process.env.JWT_SECRET as string, // השתמש במשתנה סביבה
           { expiresIn: '20h' } // Token expires in 20 hours
         );
-        console.log('\n\n\n token', token, '\n\n\n ');
 
         res.status(200).json({ success: true, user, token });
       } else {
@@ -114,8 +110,6 @@ router.post(
   '/rankings',
   async (req: Request<{}, {}, RankingsRequestBody>, res: Response) => {
     const { rater_username, rankings } = req.body;
-    console.log('Received request body:', JSON.stringify(req.body, null, 2));
-
     // לוגיקה להוספת רמות
 
     try {
@@ -224,8 +218,6 @@ router.post(
   verifyToken,
   async (req: Request, res: Response) => {
     try {
-      console.log('\n\n\n enlist-users', 'enlist-users', '\n\n\n ');
-
       const { usernames, isTierMethod } = req.body as EnlistUsersRequestBody;
 
       await userService.enlistUsersBox(usernames);

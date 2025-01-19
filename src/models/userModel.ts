@@ -19,5 +19,5 @@ const pool = new Pool({
   port: 5432,
   ssl: sslConfig,
 });
-
+console.log('PGHOST', PGHOST);
 export default pool;

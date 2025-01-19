@@ -192,8 +192,6 @@ class UserService {
 
   // הרשמה למשתמשים למשחק הבא
   public async enlistUsersBox(usernames: string[]): Promise<boolean> {
-    console.log('Enlisting users...');
-
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
