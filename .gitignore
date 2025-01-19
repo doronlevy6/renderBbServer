@@ -6,3 +6,4 @@
 package-lock.json
 
 models/userModel.js
+.env
