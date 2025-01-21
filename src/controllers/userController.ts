@@ -6,17 +6,25 @@ import balancedTeamsService from '../services/balancedTeamsService';
 import { getIo } from '../socket/socket';
 import { verifyToken } from './verifyToken';
 import jwt from 'jsonwebtoken';
+import teamService from '../services/teamService';
 
 // הגדרת ממשקים (Interfaces) לטיפוסים של הבקשות
 interface RegisterRequestBody {
   username: string;
   password: string;
   email: string;
+  teamId?: number;
 }
 
 interface LoginRequestBody {
   username: string;
   password: string;
+}
+
+interface CreateTeamRequestBody {
+  team_name: string;
+  team_password: string;
+  team_type: string;
 }
 
 interface Ranking {
@@ -52,16 +60,34 @@ interface EnlistUsersRequestBody {
 
 const router: Router = express.Router();
 
-router.get('/', async (req: Request, res: Response) => {
-  res.send('2000');
-});
+router.post(
+  '/create-team',
+  async (req: Request<{}, {}, CreateTeamRequestBody>, res: Response) => {
+    const { team_name, team_password, team_type } = req.body;
+    try {
+      const team = await teamService.createTeam(
+        team_name,
+        team_password,
+        team_type
+      );
+      res.status(201).json({ success: true, team });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+);
 
 router.post(
   '/register',
   async (req: Request<{}, {}, RegisterRequestBody>, res: Response) => {
-    const { username, password, email } = req.body;
+    const { username, password, email, teamId } = req.body;
     try {
-      const user = await userService.createUser(username, password, email);
+      const user = await userService.createUser(
+        username,
+        password,
+        email,
+        teamId
+      );
       res.status(201).json({ success: true, user });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
@@ -149,21 +175,6 @@ router.post(
   }
 );
 
-// router.get(
-//   '/all-rankings/:rater_username',
-//   async (req: Request<{ rater_username: string }>, res: Response) => {
-//     const { rater_username } = req.params;
-//     try {
-//       const rankings = await userService.getPlayerRankingsByRater(
-//         rater_username
-//       );
-//       res.status(200).json({ success: true, rankings });
-//     } catch (err: any) {
-//       res.status(500).json({ success: false, message: err.message });
-//     }
-//   }
-// );
-
 router.get(
   '/rankings/:username',
   async (req: Request<{ username: string }>, res: Response) => {
@@ -177,20 +188,6 @@ router.get(
     }
   }
 );
-
-// router.post('/set-teams', async (req: Request, res: Response) => {
-//   try {
-//     const { isTierMethod } = req.body as { isTierMethod: boolean };
-//     const teams = await balancedTeamsService.setBalancedTeams(
-//       getIo(),
-//       isTierMethod
-//     );
-
-//     res.status(200).json({ success: true });
-//   } catch (err: any) {
-//     res.status(500).json({ success: false, message: err.message });
-//   }
-// });
 
 router.get('/enlist', async (req: Request, res: Response) => {
   try {

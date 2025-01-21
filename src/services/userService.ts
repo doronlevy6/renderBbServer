@@ -8,7 +8,7 @@ interface User {
   username: string;
   password: string;
   email: string;
-  // שדות נוספים אם יש
+  teamId?: number;
 }
 
 interface Ranking {
@@ -35,15 +35,19 @@ interface PlayerRankings {
 
 class UserService {
   // יצירת משתמש חדש
+  // בתוך src/services/userService.ts
+
   public async createUser(
     username: string,
     password: string,
-    email: string
+    email: string,
+    teamId?: number // NEW: פרמטר אופציונלי לקבוצה
   ): Promise<User> {
     try {
       const result = await pool.query(
-        'INSERT INTO users (username, password, email) VALUES ($1, $2, $3) RETURNING *',
-        [username, password, email]
+        // UPDATED: מוסיף את העמודה team_id; אם אין ערך, נשלח NULL
+        'INSERT INTO users (username, password, email, team_id) VALUES ($1, $2, $3, $4) RETURNING *',
+        [username, password, email, teamId || null]
       );
       return result.rows[0];
     } catch (err: any) {
