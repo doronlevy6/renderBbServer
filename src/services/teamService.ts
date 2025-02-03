@@ -29,6 +29,19 @@ class TeamService {
       throw new Error('Failed to create team');
     }
   }
+  // ב-teamService.ts
+  public async getTeamByName(teamName: string): Promise<Team | null> {
+    try {
+      const result = await pool.query(
+        'SELECT * FROM teams WHERE team_name = $1',
+        [teamName]
+      );
+      return result.rows[0] || null;
+    } catch (err: any) {
+      console.error(err);
+      throw new Error('Failed to get team by name');
+    }
+  }
 }
 
 export default new TeamService();

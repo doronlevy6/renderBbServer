@@ -13,7 +13,8 @@ interface RegisterRequestBody {
   username: string;
   password: string;
   email: string;
-  teamId?: number;
+  teamName: string;
+  teamPassword: string;
 }
 
 interface LoginRequestBody {
@@ -79,14 +80,28 @@ router.post(
 
 router.post(
   '/register',
-  async (req: Request<{}, {}, RegisterRequestBody>, res: Response) => {
-    const { username, password, email, teamId } = req.body;
+  async (
+    req: Request<{}, any, RegisterRequestBody>,
+    res: Response
+  ): Promise<void> => {
+    const { username, password, email, teamName, teamPassword } = req.body;
     try {
+      const team = await teamService.getTeamByName(teamName);
+      if (!team) {
+        res.status(400).json({ success: false, message: 'Team not found' });
+        return;
+      }
+      if (team.team_password !== teamPassword) {
+        res
+          .status(400)
+          .json({ success: false, message: 'Invalid team password' });
+        return;
+      }
       const user = await userService.createUser(
         username,
         password,
         email,
-        teamId
+        team.team_id
       );
       res.status(201).json({ success: true, user });
     } catch (err: any) {
@@ -203,7 +218,7 @@ router.post('/delete-enlist', async (req: Request, res: Response) => {
   try {
     const { usernames, isTierMethod } = req.body as DeleteEnlistRequestBody;
     await userService.deleteEnlistedUsers(usernames);
-    await balancedTeamsService.setBalancedTeams(getIo(), isTierMethod);
+    // await balancedTeamsService.setBalancedTeams(getIo(), isTierMethod);
     res.status(200).json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -218,7 +233,7 @@ router.post(
       const { usernames, isTierMethod } = req.body as EnlistUsersRequestBody;
 
       await userService.enlistUsersBox(usernames);
-      await balancedTeamsService.setBalancedTeams(getIo(), isTierMethod); // Pass method to function//!
+      // await balancedTeamsService.setBalancedTeams(getIo(), isTierMethod); // Pass method to function//!
 
       res.status(200).json({ success: true });
     } catch (err: any) {
