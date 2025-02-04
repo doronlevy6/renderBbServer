@@ -8,7 +8,7 @@ interface User {
   username: string;
   password: string;
   email: string;
-  // שדות נוספים אם יש
+  team_id: number;
 }
 
 interface Ranking {
@@ -35,15 +35,19 @@ interface PlayerRankings {
 
 class UserService {
   // יצירת משתמש חדש
+  // בתוך src/services/userService.ts
+
   public async createUser(
     username: string,
     password: string,
-    email: string
+    email: string,
+    teamId?: number // NEW: פרמטר אופציונלי לקבוצה
   ): Promise<User> {
     try {
       const result = await pool.query(
-        'INSERT INTO users (username, password, email) VALUES ($1, $2, $3) RETURNING *',
-        [username, password, email]
+        // UPDATED: מוסיף את העמודה team_id; אם אין ערך, נשלח NULL
+        'INSERT INTO users (username, password, email, team_id) VALUES ($1, $2, $3, $4) RETURNING *',
+        [username, password, email, teamId || null]
       );
       return result.rows[0];
     } catch (err: any) {
@@ -78,10 +82,15 @@ class UserService {
   }
 
   // קבלת כל שמות המשתמשים
-  public async getAllUsernames(): Promise<{ username: string }[]> {
+  public async getAllUsernames(
+    teamId: number
+  ): Promise<{ username: string }[]> {
     try {
       const result = await pool.query(
-        'SELECT username FROM users ORDER BY username ASC'
+        `SELECT username FROM users
+          WHERE team_id=$1 
+          ORDER BY username ASC`,
+        [teamId]
       );
       return result.rows;
     } catch (err: any) {
@@ -146,31 +155,39 @@ class UserService {
   }
 
   // קבלת דירוגי שחקנים לפי מדרג
-  public async getPlayerRankingsByRater(
-    rater_username: string
-  ): Promise<any[]> {
-    // ניתן להגדיר ממשק מתאים
-    try {
-      const result = await pool.query(
-        `SELECT u.username, pr.skill_level, pr.scoring_ability, pr.defensive_skills, pr.speed_and_agility, pr.shooting_range, pr.rebound_skills
-         FROM users u
-         LEFT JOIN player_rankings pr ON u.username = pr.rated_username AND pr.rater_username = $1`,
-        [rater_username]
-      );
-      return result.rows;
-    } catch (err: any) {
-      console.error(err);
-      throw new Error('Failed to fetch player rankings');
-    }
-  }
+  // public async getPlayerRankingsByRater(
+  //   rater_username: string
+  // ): Promise<any[]> {
+  //   // ניתן להגדיר ממשק מתאים
+  //   try {
+  //     const result = await pool.query(
+  //       `SELECT u.username, pr.skill_level, pr.scoring_ability, pr.defensive_skills, pr.speed_and_agility, pr.shooting_range, pr.rebound_skills
+  //        FROM users u
+  //        LEFT JOIN player_rankings pr ON u.username = pr.rated_username AND pr.rater_username = $1`,
+  //       [rater_username]
+  //     );
+  //     return result.rows;
+  //   } catch (err: any) {
+  //     console.error(err);
+  //     throw new Error('Failed to fetch player rankings');
+  //   }
+  // }
 
   // קבלת כל המשתמשים הרשומים למשחק הבא
-  public async getAllEnlistedUsers(): Promise<string[]> {
+  // עדכון הפונקציה בשירות כך שתסנן לפי team_id
+  // חלק מקובץ השירות userService או כל מודול המתאים
+
+  public async getAllEnlistedUsers(teamId: number): Promise<string[]> {
     try {
       const result = await pool.query(
-        'SELECT username FROM next_game_enlistment ORDER BY enlistment_order ASC'
+        `SELECT n.username 
+       FROM next_game_enlistment n
+       JOIN users u ON n.username = u.username
+       WHERE u.team_id = $1 
+       ORDER BY n.enlistment_order ASC`,
+        [teamId]
       );
-      return result.rows.map((row: { username: string }) => row.username); // Return an array of usernames
+      return result.rows.map((row: { username: string }) => row.username);
     } catch (err: any) {
       console.error(err);
       throw new Error('Failed to fetch enlisted users');
@@ -225,24 +242,24 @@ class UserService {
   }
 
   // קבלת צוותים
-  public async getTeams(): Promise<any> {
-    // ניתן להגדיר ממשק מתאים
-    try {
-      // Fetch the last row by ordering by game_id in descending order and limiting the result to one row
-      const result = await pool.query(
-        'SELECT teams FROM game_teams ORDER BY game_id DESC LIMIT 1'
-      );
+  // public async getTeams(): Promise<any> {
+  //   // ניתן להגדיר ממשק מתאים
+  //   try {
+  //     // Fetch the last row by ordering by game_id in descending order and limiting the result to one row
+  //     const result = await pool.query(
+  //       'SELECT teams FROM game_teams ORDER BY game_id DESC LIMIT 1'
+  //     );
 
-      if (result.rows.length > 0) {
-        return result.rows[0].teams; // Return the teams field from the last row
-      } else {
-        throw new Error('No teams found');
-      }
-    } catch (err: any) {
-      console.error(err);
-      throw err; // Propagate the error to be handled by the caller
-    }
-  }
+  //     if (result.rows.length > 0) {
+  //       return result.rows[0].teams; // Return the teams field from the last row
+  //     } else {
+  //       throw new Error('No teams found');
+  //     }
+  //   } catch (err: any) {
+  //     console.error(err);
+  //     throw err; // Propagate the error to be handled by the caller
+  //   }
+  // }
 }
 
 const userService = new UserService();
