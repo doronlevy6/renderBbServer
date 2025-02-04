@@ -145,6 +145,7 @@ router.post(
 
 router.get('/usernames', verifyToken, async (req: Request, res: Response) => {
   try {
+    // @ts-ignore
     const teamid = req.user?.team_id;
     const usernames = await userService.getAllUsernames(teamid!);
     console.log('teamid', teamid);
@@ -219,6 +220,7 @@ router.get(
 // עדכון הנתיב כך שישתמש ב-verifyToken לקבלת team_id מהטוקן
 router.get('/enlist', verifyToken, async (req: Request, res: Response) => {
   try {
+    // @ts-ignore
     const teamId = req.user?.team_id || 1;
     const usernames = await userService.getAllEnlistedUsers(teamId);
     res.status(200).json({ success: true, usernames });
@@ -270,7 +272,7 @@ router.get(
   verifyToken,
   async (req: Request<{ username: string }>, res: Response) => {
     const username = req.params.username;
-
+    // @ts-ignore
     const teamId = req.user?.team_id || 1;
     try {
       const playersRankings =
@@ -293,6 +295,7 @@ router.get(
   verifyToken,
   async (req: Request, res: Response) => {
     try {
+      // @ts-ignore
       const teamId = req.user?.team_id || 1;
       const playersRankings = await balancedTeamsService.getAllPlayersRankings(
         teamId
