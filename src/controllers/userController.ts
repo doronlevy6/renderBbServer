@@ -140,9 +140,10 @@ router.post(
   }
 );
 
-router.get('/usernames', async (req: Request, res: Response) => {
+router.get('/usernames', verifyToken, async (req: Request, res: Response) => {
   try {
-    const usernames = await userService.getAllUsernames();
+    const teamid = req.user?.team_id;
+    const usernames = await userService.getAllUsernames(teamid!);
 
     res
       .status(200)

@@ -82,10 +82,15 @@ class UserService {
   }
 
   // קבלת כל שמות המשתמשים
-  public async getAllUsernames(): Promise<{ username: string }[]> {
+  public async getAllUsernames(
+    teamId: number
+  ): Promise<{ username: string }[]> {
     try {
       const result = await pool.query(
-        'SELECT username FROM users ORDER BY username ASC'
+        `SELECT username FROM users
+          WHERE team_id=$1 
+          ORDER BY username ASC`,
+        [teamId]
       );
       return result.rows;
     } catch (err: any) {
