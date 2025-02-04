@@ -213,8 +213,7 @@ router.get(
 // עדכון הנתיב כך שישתמש ב-verifyToken לקבלת team_id מהטוקן
 router.get('/enlist', verifyToken, async (req: Request, res: Response) => {
   try {
-    //@ts-ignore
-    const teamId = req.user.team_id;
+    const teamId = req.user?.team_id || 1;
     const usernames = await userService.getAllEnlistedUsers(teamId);
     res.status(200).json({ success: true, usernames });
   } catch (err: any) {
@@ -249,14 +248,14 @@ router.post(
   }
 );
 
-router.get('/get-teams', async (req: Request, res: Response) => {
-  try {
-    const teams = await userService.getTeams();
-    res.status(200).json({ success: true, teams });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+// router.get('/get-teams', async (req: Request, res: Response) => {
+//   try {
+//     const teams = await userService.getTeams();
+//     res.status(200).json({ success: true, teams });
+//   } catch (err: any) {
+//     res.status(500).json({ success: false, message: err.message });
+//   }
+// });
 
 // routes.js or your router file
 
@@ -265,8 +264,8 @@ router.get(
   verifyToken,
   async (req: Request<{ username: string }>, res: Response) => {
     const username = req.params.username;
-    //@ts-ignore
-    const teamId = req.user.team_id;
+
+    const teamId = req.user?.team_id || 1;
     try {
       const playersRankings =
         await balancedTeamsService.getAllPlayersRankingsFromUser(
@@ -288,8 +287,7 @@ router.get(
   verifyToken,
   async (req: Request, res: Response) => {
     try {
-      //@ts-ignore
-      const teamId = req.user.team_id;
+      const teamId = req.user?.team_id || 1;
       const playersRankings = await balancedTeamsService.getAllPlayersRankings(
         teamId
       );

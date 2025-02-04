@@ -155,23 +155,23 @@ class UserService {
   }
 
   // קבלת דירוגי שחקנים לפי מדרג
-  public async getPlayerRankingsByRater(
-    rater_username: string
-  ): Promise<any[]> {
-    // ניתן להגדיר ממשק מתאים
-    try {
-      const result = await pool.query(
-        `SELECT u.username, pr.skill_level, pr.scoring_ability, pr.defensive_skills, pr.speed_and_agility, pr.shooting_range, pr.rebound_skills
-         FROM users u
-         LEFT JOIN player_rankings pr ON u.username = pr.rated_username AND pr.rater_username = $1`,
-        [rater_username]
-      );
-      return result.rows;
-    } catch (err: any) {
-      console.error(err);
-      throw new Error('Failed to fetch player rankings');
-    }
-  }
+  // public async getPlayerRankingsByRater(
+  //   rater_username: string
+  // ): Promise<any[]> {
+  //   // ניתן להגדיר ממשק מתאים
+  //   try {
+  //     const result = await pool.query(
+  //       `SELECT u.username, pr.skill_level, pr.scoring_ability, pr.defensive_skills, pr.speed_and_agility, pr.shooting_range, pr.rebound_skills
+  //        FROM users u
+  //        LEFT JOIN player_rankings pr ON u.username = pr.rated_username AND pr.rater_username = $1`,
+  //       [rater_username]
+  //     );
+  //     return result.rows;
+  //   } catch (err: any) {
+  //     console.error(err);
+  //     throw new Error('Failed to fetch player rankings');
+  //   }
+  // }
 
   // קבלת כל המשתמשים הרשומים למשחק הבא
   // עדכון הפונקציה בשירות כך שתסנן לפי team_id
@@ -242,24 +242,24 @@ class UserService {
   }
 
   // קבלת צוותים
-  public async getTeams(): Promise<any> {
-    // ניתן להגדיר ממשק מתאים
-    try {
-      // Fetch the last row by ordering by game_id in descending order and limiting the result to one row
-      const result = await pool.query(
-        'SELECT teams FROM game_teams ORDER BY game_id DESC LIMIT 1'
-      );
+  // public async getTeams(): Promise<any> {
+  //   // ניתן להגדיר ממשק מתאים
+  //   try {
+  //     // Fetch the last row by ordering by game_id in descending order and limiting the result to one row
+  //     const result = await pool.query(
+  //       'SELECT teams FROM game_teams ORDER BY game_id DESC LIMIT 1'
+  //     );
 
-      if (result.rows.length > 0) {
-        return result.rows[0].teams; // Return the teams field from the last row
-      } else {
-        throw new Error('No teams found');
-      }
-    } catch (err: any) {
-      console.error(err);
-      throw err; // Propagate the error to be handled by the caller
-    }
-  }
+  //     if (result.rows.length > 0) {
+  //       return result.rows[0].teams; // Return the teams field from the last row
+  //     } else {
+  //       throw new Error('No teams found');
+  //     }
+  //   } catch (err: any) {
+  //     console.error(err);
+  //     throw err; // Propagate the error to be handled by the caller
+  //   }
+  // }
 }
 
 const userService = new UserService();
