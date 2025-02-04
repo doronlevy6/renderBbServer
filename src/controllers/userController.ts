@@ -7,6 +7,7 @@ import { getIo } from '../socket/socket';
 import { verifyToken } from './verifyToken';
 import jwt from 'jsonwebtoken';
 import teamService from '../services/teamService';
+import { log } from 'console';
 
 // הגדרת ממשקים (Interfaces) לטיפוסים של הבקשות
 interface RegisterRequestBody {
@@ -114,6 +115,8 @@ router.post(
   '/login',
   async (req: Request<{}, {}, LoginRequestBody>, res: Response) => {
     const { username, password } = req.body;
+    console.log('xxxxxx');
+
     try {
       const user = await userService.loginUser(username, password);
       if (user) {
