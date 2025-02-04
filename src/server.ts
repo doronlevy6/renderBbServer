@@ -23,7 +23,7 @@ createTables();
 
 io.on('connection', (socket: any) => {
   // מומלץ להגדיר טיפוס מדויק ל-socket
-  console.log('Client connected');
+  console.log('Client connected1');
 });
 
 server.listen(PORT, () => {
