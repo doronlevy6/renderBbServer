@@ -144,6 +144,9 @@ router.get('/usernames', verifyToken, async (req: Request, res: Response) => {
   try {
     const teamid = req.user?.team_id;
     const usernames = await userService.getAllUsernames(teamid!);
+    console.log('teamid', teamid);
+
+    console.log('usernames', usernames);
 
     res
       .status(200)
