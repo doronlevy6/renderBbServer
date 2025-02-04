@@ -118,7 +118,12 @@ router.post(
       const user = await userService.loginUser(username, password);
       if (user) {
         const token = jwt.sign(
-          { username: user.username, userEmail: user.email },
+          {
+            username: user.username,
+            userEmail: user.email,
+
+            team_id: user.team_id,
+          },
           process.env.JWT_SECRET as string, // השתמש במשתנה סביבה
           { expiresIn: '20h' } // Token expires in 20 hours
         );
@@ -204,16 +209,17 @@ router.get(
   }
 );
 
-router.get('/enlist', async (req: Request, res: Response) => {
+// עדכון הנתיב כך שישתמש ב-verifyToken לקבלת team_id מהטוקן
+router.get('/enlist', verifyToken, async (req: Request, res: Response) => {
   try {
-    const usernames = await userService.getAllEnlistedUsers();
-
+    //@ts-ignore
+    const teamId = req.user.team_id;
+    const usernames = await userService.getAllEnlistedUsers(teamId);
     res.status(200).json({ success: true, usernames });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
 router.post('/delete-enlist', async (req: Request, res: Response) => {
   try {
     const { usernames, isTierMethod } = req.body as DeleteEnlistRequestBody;
@@ -255,11 +261,17 @@ router.get('/get-teams', async (req: Request, res: Response) => {
 
 router.get(
   '/players-rankings/:username',
+  verifyToken,
   async (req: Request<{ username: string }>, res: Response) => {
     const username = req.params.username;
+    //@ts-ignore
+    const teamId = req.user.team_id;
     try {
       const playersRankings =
-        await balancedTeamsService.getAllPlayersRankingsFromUser(username);
+        await balancedTeamsService.getAllPlayersRankingsFromUser(
+          username,
+          teamId
+        );
       res.status(200).json({ success: true, playersRankings });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
@@ -269,13 +281,21 @@ router.get(
 
 // routes.js or your router file
 
-router.get('/players-rankings', async (req: Request, res: Response) => {
-  try {
-    const playersRankings = await balancedTeamsService.getAllPlayersRankings();
-    res.status(200).json({ success: true, playersRankings });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+// עדכון הנתיב כך שמעבירים את teamId לשירות:
+router.get(
+  '/players-rankings',
+  verifyToken,
+  async (req: Request, res: Response) => {
+    try {
+      //@ts-ignore
+      const teamId = req.user.team_id;
+      const playersRankings = await balancedTeamsService.getAllPlayersRankings(
+        teamId
+      );
+      res.status(200).json({ success: true, playersRankings });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
   }
-});
-
+);
 export default router;

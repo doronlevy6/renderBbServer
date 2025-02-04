@@ -8,7 +8,7 @@ interface User {
   username: string;
   password: string;
   email: string;
-  teamId?: number;
+  team_id: number;
 }
 
 interface Ranking {
@@ -169,12 +169,20 @@ class UserService {
   }
 
   // קבלת כל המשתמשים הרשומים למשחק הבא
-  public async getAllEnlistedUsers(): Promise<string[]> {
+  // עדכון הפונקציה בשירות כך שתסנן לפי team_id
+  // חלק מקובץ השירות userService או כל מודול המתאים
+
+  public async getAllEnlistedUsers(teamId: number): Promise<string[]> {
     try {
       const result = await pool.query(
-        'SELECT username FROM next_game_enlistment ORDER BY enlistment_order ASC'
+        `SELECT n.username 
+       FROM next_game_enlistment n
+       JOIN users u ON n.username = u.username
+       WHERE u.team_id = $1 
+       ORDER BY n.enlistment_order ASC`,
+        [teamId]
       );
-      return result.rows.map((row: { username: string }) => row.username); // Return an array of usernames
+      return result.rows.map((row: { username: string }) => row.username);
     } catch (err: any) {
       console.error(err);
       throw new Error('Failed to fetch enlisted users');
