@@ -115,7 +115,8 @@ router.post(
   '/login',
   async (req: Request<{}, {}, LoginRequestBody>, res: Response) => {
     const { username, password } = req.body;
-       try {
+    console.log(username + 'connected');
+    try {
       const user = await userService.loginUser(username, password);
       if (user) {
         const token = jwt.sign(
@@ -190,6 +191,8 @@ router.post(
 
         return allValid;
       });
+
+      console.log('rater_username', rater_username);
 
       await userService.storePlayerRankings(rater_username, validRankings);
       res.status(200).json({ success: true });
