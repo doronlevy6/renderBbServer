@@ -115,9 +115,7 @@ router.post(
   '/login',
   async (req: Request<{}, {}, LoginRequestBody>, res: Response) => {
     const { username, password } = req.body;
-    console.log('xxxxxx');
-
-    try {
+       try {
       const user = await userService.loginUser(username, password);
       if (user) {
         const token = jwt.sign(
@@ -149,8 +147,6 @@ router.get('/usernames', verifyToken, async (req: Request, res: Response) => {
     const teamid = req.user?.team_id;
     const usernames = await userService.getAllUsernames(teamid!);
     console.log('teamid', teamid);
-
-    console.log('usernames', usernames);
 
     res
       .status(200)
