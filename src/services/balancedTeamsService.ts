@@ -3,20 +3,21 @@
 import pool from '../models/userModel';
 import { Server as SocketIOServer } from 'socket.io';
 
-// Define interfaces
+// UPDATED: עדכון ממשק השחקן לשימוש במפתחות החדשים (param1 עד param6)
 interface Player {
   username: string;
-  skill_level: number;
-  scoring_ability: number;
-  defensive_skills: number;
-  speed_and_agility: number;
-  shooting_range: number;
-  rebound_skills: number;
+  param1: number; // היה: skill_level
+  param2: number; // היה: scoring_ability
+  param3: number; // היה: defensive_skills
+  param4: number; // היה: speed_and_agility
+  param5: number; // היה: shooting_range
+  param6: number; // היה: rebound_skills
 }
 
 type Team = Player[];
 
 class BalancedTeamsService {
+  // UPDATED: עדכון השאילתה לשימוש בעמודות החדשות param1 ... param6
   public async getAllPlayersRankingsFromUser(
     raterUsername: string,
     teamId: number
@@ -25,12 +26,12 @@ class BalancedTeamsService {
       const result = await pool.query(
         `SELECT   
           pr.rated_username AS username, 
-          AVG(pr.skill_level) AS skill_level,
-          AVG(pr.scoring_ability) AS scoring_ability, 
-          AVG(pr.defensive_skills) AS defensive_skills,
-          AVG(pr.speed_and_agility) AS speed_and_agility, 
-          AVG(pr.shooting_range) AS shooting_range,
-          AVG(pr.rebound_skills) AS rebound_skills
+          AVG(pr.param1) AS param1,
+          AVG(pr.param2) AS param2, 
+          AVG(pr.param3) AS param3,
+          AVG(pr.param4) AS param4, 
+          AVG(pr.param5) AS param5,
+          AVG(pr.param6) AS param6
         FROM player_rankings pr
         JOIN users u ON pr.rated_username = u.username
         WHERE pr.rater_username = $1 AND u.team_id = $2
@@ -46,17 +47,18 @@ class BalancedTeamsService {
     }
   }
 
+  // UPDATED: עדכון השאילתה לשימוש במפתחות החדשים
   public async getAllPlayersRankings(teamId: number): Promise<Player[]> {
     try {
       const result = await pool.query(
         `SELECT   
           pr.rated_username AS username, 
-          AVG(pr.skill_level) AS skill_level,
-          AVG(pr.scoring_ability) AS scoring_ability, 
-          AVG(pr.defensive_skills) AS defensive_skills,
-          AVG(pr.speed_and_agility) AS speed_and_agility, 
-          AVG(pr.shooting_range) AS shooting_range,
-          AVG(pr.rebound_skills) AS rebound_skills
+          AVG(pr.param1) AS param1,
+          AVG(pr.param2) AS param2, 
+          AVG(pr.param3) AS param3,
+          AVG(pr.param4) AS param4, 
+          AVG(pr.param5) AS param5,
+          AVG(pr.param6) AS param6
         FROM player_rankings pr
         JOIN users u ON pr.rated_username = u.username
         WHERE u.team_id = $1

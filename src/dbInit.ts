@@ -1,4 +1,4 @@
-// src/dbInit.ts
+// הקוד הבא נכתב משמאל לימין
 
 import pool from './models/userModel';
 
@@ -31,24 +31,29 @@ const createTables = async (): Promise<void> => {
       );
     `);
 
-    // Create player_rankings table remains unchanged
+    // =====================================
+    // UPDATED: Create player_rankings table with renamed parameters
+    // Renaming columns to param1 ... param6 for general representation
+    // =====================================
     await pool.query(`
       CREATE TABLE IF NOT EXISTS player_rankings (
           rater_username VARCHAR(255) NOT NULL,
           rated_username VARCHAR(255) NOT NULL,
-          skill_level INTEGER,
-          scoring_ability INTEGER,
-          defensive_skills INTEGER,
-          speed_and_agility INTEGER,
-          shooting_range INTEGER,
-          rebound_skills INTEGER,
+          param1 INTEGER,   
+          param2 INTEGER,  
+          param3 INTEGER,   
+          param4 INTEGER,   
+          param5 INTEGER,   
+          param6 INTEGER,   
           FOREIGN KEY (rater_username) REFERENCES users(username),
           FOREIGN KEY (rated_username) REFERENCES users(username),
           PRIMARY KEY (rater_username, rated_username)
       );
     `);
 
+    // =====================================
     // Create next_game_enlistment table remains unchanged
+    // =====================================
     await pool.query(`
       CREATE TABLE IF NOT EXISTS next_game_enlistment (
           username VARCHAR(255) PRIMARY KEY,
@@ -58,7 +63,9 @@ const createTables = async (): Promise<void> => {
       );
     `);
 
+    // =====================================
     // Create game_teams table remains unchanged
+    // =====================================
     await pool.query(`
       CREATE TABLE IF NOT EXISTS game_teams (
           game_id SERIAL PRIMARY KEY,

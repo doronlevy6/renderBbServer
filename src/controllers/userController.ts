@@ -45,10 +45,10 @@ interface RankingsRequestBody {
   rankings: Ranking[];
 }
 
-interface EnlistRequestBody {
-  usernames: string[];
-  isTierMethod: boolean;
-}
+// interface EnlistRequestBody {
+//   usernames: string[];
+//   isTierMethod: boolean;
+// }
 
 interface DeleteEnlistRequestBody {
   usernames: string[];
