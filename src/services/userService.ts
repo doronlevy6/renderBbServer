@@ -41,17 +41,31 @@ class UserService {
     username: string,
     password: string,
     email: string,
-    teamId?: number // NEW: פרמטר אופציונלי לקבוצה
+    teamId?: number // NEW: Optional team parameter
   ): Promise<User> {
     try {
+      // Check if username already exists
+      const existingUser = await pool.query(
+        'SELECT username FROM users WHERE username = $1',
+        [username]
+      );
+
+      if (existingUser.rows.length > 0) {
+        throw new Error(
+          'Username already exists. Please choose a different one.'
+        );
+      }
+
+      // Insert new user if username is available
       const result = await pool.query(
         'INSERT INTO users (username, password, email, team_id) VALUES ($1, $2, $3, $4) RETURNING *',
         [username, password, email, teamId || null]
       );
+
       return result.rows[0];
     } catch (err: any) {
       console.error(err);
-      throw new Error('Failed to create user');
+      throw new Error(err.message || 'Failed to create user');
     }
   }
 
