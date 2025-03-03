@@ -71,18 +71,20 @@ class UserService {
   }
 
   // התחברות משתמש
+  // Backend: עדכון המתודה loginUser לביצוע join עם טבלת teams
   public async loginUser(
     username: string,
     password: string
   ): Promise<User | null> {
     try {
       const result = await pool.query(
-        'SELECT * FROM users WHERE username = $1',
+        `SELECT users.*, teams.team_type FROM users
+       LEFT JOIN teams ON users.team_id = teams.team_id
+       WHERE username = $1`,
         [username]
       );
 
       const user: User = result.rows[0];
-
       if (user && user.password === password) {
         return user;
       } else {
