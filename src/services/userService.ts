@@ -1,5 +1,6 @@
 // הקוד הבא נכתב משמאל לימין
 
+import { Client } from 'pg';
 import pool from '../models/userModel';
 
 // הגדרת ממשקים (Interfaces) לטיפוסים של המשתמשים והדירוגים
@@ -231,6 +232,11 @@ class UserService {
     } finally {
       client.release();
     }
+  }
+  public async getAllTeams() {
+    const query = 'SELECT team_id, team_name FROM teams';
+    const result = await pool.query(query);
+    return result.rows;
   }
 }
 

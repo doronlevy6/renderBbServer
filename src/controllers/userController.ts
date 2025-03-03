@@ -255,16 +255,15 @@ router.post(
   }
 );
 
-// router.get('/get-teams', async (req: Request, res: Response) => {
-//   try {
-//     const teams = await userService.getTeams();
-//     res.status(200).json({ success: true, teams });
-//   } catch (err: any) {
-//     res.status(500).json({ success: false, message: err.message });
-//   }
-// });
-
-// routes.js or your router file
+router.get('/teams', async (req: Request, res: Response) => {
+  try {
+    // נניח שיש לכם מתודה ב-teamService בשם getAllTeams
+    const teams = await userService.getAllTeams();
+    res.status(200).json({ success: true, teams });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 router.get(
   '/players-rankings/:username',
