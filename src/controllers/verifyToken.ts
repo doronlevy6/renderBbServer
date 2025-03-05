@@ -1,11 +1,16 @@
-// src/controllers/verifyToken.ts
-
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-// הגדרת ממשק למשתמש ב-Request
+// הגדרת ממשק מדויק יותר למשתמש
+interface UserPayload {
+  username: string;
+  userEmail: string;
+  team_id: number;
+}
+
+// הרחבת Request כך שיכיל `user`
 interface AuthRequest extends Request {
-  user?: any; // מומלץ להגדיר טיפוס מדויק יותר
+  user?: UserPayload;
 }
 
 export const verifyToken = (
@@ -23,8 +28,11 @@ export const verifyToken = (
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
-    req.user = decoded;
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET as string
+    ) as UserPayload;
+    req.user = decoded; // TypeScript כעת יבין את המבנה של `req.user`
     next();
   } catch (ex) {
     res.status(400).json({ success: false, message: 'Invalid token.' });
