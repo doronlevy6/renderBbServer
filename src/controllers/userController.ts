@@ -31,13 +31,12 @@ interface CreateTeamRequestBody {
 
 interface Ranking {
   username: string;
-  skillLevel: number;
-  scoringAbility: number;
-  defensiveSkills: number;
-  speedAndAgility: number;
-  shootingRange: number;
-  reboundSkills: number;
-  // הוסף שדות נוספים במידת הצורך
+  param1: number;
+  param2: number;
+  param3: number;
+  param4: number;
+  param5: number;
+  param6: number;
 }
 
 interface RankingsRequestBody {
