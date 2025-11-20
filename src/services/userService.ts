@@ -114,6 +114,22 @@ class UserService {
     }
   }
 
+  // קבלת כל המשתמשים (לניהול)
+  public async getAllUsers(teamId: number): Promise<User[]> {
+    try {
+      const result = await pool.query(
+        `SELECT username, email, team_id FROM users
+          WHERE team_id=$1 
+          ORDER BY username ASC`,
+        [teamId]
+      );
+      return result.rows;
+    } catch (err: any) {
+      console.error(err);
+      throw new Error('Failed to fetch users');
+    }
+  }
+
   // אחסון דירוגי שחקנים
   public async storePlayerRankings(
     rater_username: string,
@@ -239,6 +255,58 @@ class UserService {
     const query = 'SELECT team_id, team_name FROM teams';
     const result = await pool.query(query);
     return result.rows;
+  }
+
+  // מחיקת משתמש (שחקן)
+  public async deleteUser(username: string): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Delete from player_rankings (both as rater and rated)
+      await client.query('DELETE FROM player_rankings WHERE rater_username = $1 OR rated_username = $1', [username]);
+
+      // Delete from next_game_enlistment
+      await client.query('DELETE FROM next_game_enlistment WHERE username = $1', [username]);
+
+      // Delete from users
+      await client.query('DELETE FROM users WHERE username = $1', [username]);
+
+      await client.query('COMMIT');
+    } catch (err: any) {
+      await client.query('ROLLBACK');
+      console.error(err);
+      throw new Error('Failed to delete user');
+    } finally {
+      client.release();
+    }
+  }
+
+  // עדכון פרטי משתמש (שחקן)
+  public async updateUser(currentUsername: string, newUsername: string, newEmail?: string): Promise<User> {
+    try {
+      // Check if new username exists (if changed)
+      if (currentUsername !== newUsername) {
+        const existing = await pool.query('SELECT username FROM users WHERE username = $1', [newUsername]);
+        if (existing.rows.length > 0) {
+          throw new Error('Username already exists');
+        }
+      }
+
+      const result = await pool.query(
+        'UPDATE users SET username = $1, email = COALESCE($2, email) WHERE username = $3 RETURNING *',
+        [newUsername, newEmail, currentUsername]
+      );
+
+      if (result.rows.length === 0) {
+        throw new Error('User not found');
+      }
+
+      return result.rows[0];
+    } catch (err: any) {
+      console.error(err);
+      throw new Error(err.message || 'Failed to update user');
+    }
   }
 }
 

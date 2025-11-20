@@ -180,8 +180,8 @@ router.post(
           if (!isValid) {
             console.log(
               `Player ${player.username} left out due to invalid value for ${key}: ${value}. ` +
-                `Expected type: number between 1 and 10, ` +
-                `but got type: ${typeof value} with value: ${value}`
+              `Expected type: number between 1 and 10, ` +
+              `but got type: ${typeof value} with value: ${value}`
             );
           }
 
@@ -303,4 +303,60 @@ router.get(
     }
   }
 );
+
+// --- Management Endpoints ---
+
+router.get('/players', verifyToken, async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const teamId = req.user?.team_id || 1;
+    const users = await userService.getAllUsers(teamId);
+    res.status(200).json({ success: true, users });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.post('/add-player', verifyToken, async (req: Request, res: Response) => {
+  const { username, password, email, teamId } = req.body;
+  try {
+    // @ts-ignore
+    const requesterTeamId = req.user?.team_id;
+
+    // If teamId is not provided, use the requester's teamId
+    const targetTeamId = teamId || requesterTeamId;
+
+    if (!targetTeamId) {
+      res.status(400).json({ success: false, message: 'Team ID is required. Please ensure you are logged in and associated with a team.' });
+      return;
+    }
+
+    const user = await userService.createUser(username, password || '123456', email || '', targetTeamId);
+    res.status(201).json({ success: true, user });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete('/delete-player/:username', verifyToken, async (req: Request, res: Response) => {
+  const { username } = req.params;
+  try {
+    await userService.deleteUser(username);
+    res.status(200).json({ success: true, message: 'Player deleted successfully' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/update-player/:username', verifyToken, async (req: Request, res: Response) => {
+  const { username } = req.params;
+  const { newUsername, newEmail } = req.body;
+  try {
+    const user = await userService.updateUser(username, newUsername, newEmail);
+    res.status(200).json({ success: true, user });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 export default router;
