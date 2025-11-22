@@ -350,9 +350,9 @@ router.delete('/delete-player/:username', verifyToken, async (req: Request, res:
 
 router.put('/update-player/:username', verifyToken, async (req: Request, res: Response) => {
   const { username } = req.params;
-  const { newUsername, newEmail } = req.body;
+  const { newUsername, newEmail, newPassword } = req.body;
   try {
-    const user = await userService.updateUser(username, newUsername, newEmail);
+    const user = await userService.updateUser(username, newUsername, newEmail, newPassword);
     res.status(200).json({ success: true, user });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

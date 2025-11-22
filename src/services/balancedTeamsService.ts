@@ -25,17 +25,17 @@ class BalancedTeamsService {
     try {
       const result = await pool.query(
         `SELECT   
-          pr.rated_username AS username, 
-          AVG(pr.param1) AS param1,
-          AVG(pr.param2) AS param2, 
-          AVG(pr.param3) AS param3,
-          AVG(pr.param4) AS param4, 
-          AVG(pr.param5) AS param5,
-          AVG(pr.param6) AS param6
-        FROM player_rankings pr
-        JOIN users u ON pr.rated_username = u.username
-        WHERE pr.rater_username = $1 AND u.team_id = $2
-        GROUP BY pr.rated_username`,
+          u.username, 
+          COALESCE(AVG(pr.param1), 0) AS param1,
+          COALESCE(AVG(pr.param2), 0) AS param2, 
+          COALESCE(AVG(pr.param3), 0) AS param3,
+          COALESCE(AVG(pr.param4), 0) AS param4, 
+          COALESCE(AVG(pr.param5), 0) AS param5,
+          COALESCE(AVG(pr.param6), 0) AS param6
+        FROM users u
+        LEFT JOIN player_rankings pr ON u.username = pr.rated_username AND pr.rater_username = $1
+        WHERE u.team_id = $2
+        GROUP BY u.username`,
         [raterUsername, teamId]
       );
       return result.rows as Player[];
@@ -52,17 +52,17 @@ class BalancedTeamsService {
     try {
       const result = await pool.query(
         `SELECT   
-          pr.rated_username AS username, 
-          AVG(pr.param1) AS param1,
-          AVG(pr.param2) AS param2, 
-          AVG(pr.param3) AS param3,
-          AVG(pr.param4) AS param4, 
-          AVG(pr.param5) AS param5,
-          AVG(pr.param6) AS param6
-        FROM player_rankings pr
-        JOIN users u ON pr.rated_username = u.username
+          u.username, 
+          COALESCE(AVG(pr.param1), 0) AS param1,
+          COALESCE(AVG(pr.param2), 0) AS param2, 
+          COALESCE(AVG(pr.param3), 0) AS param3,
+          COALESCE(AVG(pr.param4), 0) AS param4, 
+          COALESCE(AVG(pr.param5), 0) AS param5,
+          COALESCE(AVG(pr.param6), 0) AS param6
+        FROM users u
+        LEFT JOIN player_rankings pr ON u.username = pr.rated_username
         WHERE u.team_id = $1
-        GROUP BY pr.rated_username`,
+        GROUP BY u.username`,
         [teamId]
       );
       return result.rows as Player[];

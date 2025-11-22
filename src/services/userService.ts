@@ -58,9 +58,10 @@ class UserService {
       }
 
       // Insert new user if username is available
+      // Use NULL for empty email to avoid duplicate key constraint violations
       const result = await pool.query(
         'INSERT INTO users (username, password, email, team_id) VALUES ($1, $2, $3, $4) RETURNING *',
-        [username, password, email, teamId || null]
+        [username, password, email || null, teamId || null]
       );
 
       return result.rows[0];
@@ -118,7 +119,7 @@ class UserService {
   public async getAllUsers(teamId: number): Promise<User[]> {
     try {
       const result = await pool.query(
-        `SELECT username, email, team_id FROM users
+        `SELECT username, email, password, team_id FROM users
           WHERE team_id=$1 
           ORDER BY username ASC`,
         [teamId]
@@ -283,7 +284,7 @@ class UserService {
   }
 
   // עדכון פרטי משתמש (שחקן)
-  public async updateUser(currentUsername: string, newUsername: string, newEmail?: string): Promise<User> {
+  public async updateUser(currentUsername: string, newUsername: string, newEmail?: string, newPassword?: string): Promise<User> {
     try {
       // Check if new username exists (if changed)
       if (currentUsername !== newUsername) {
@@ -294,8 +295,8 @@ class UserService {
       }
 
       const result = await pool.query(
-        'UPDATE users SET username = $1, email = COALESCE($2, email) WHERE username = $3 RETURNING *',
-        [newUsername, newEmail, currentUsername]
+        'UPDATE users SET username = $1, email = COALESCE($2, email), password = COALESCE($3, password) WHERE username = $4 RETURNING *',
+        [newUsername, newEmail, newPassword, currentUsername]
       );
 
       if (result.rows.length === 0) {
