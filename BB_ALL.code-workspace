@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../BB_flutter"
+		},
+		{
+			"path": "../BB_web"
 		}
 	]
 }
