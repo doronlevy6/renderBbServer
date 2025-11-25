@@ -264,14 +264,16 @@ class UserService {
     try {
       await client.query('BEGIN');
 
+      const cleanUsername = username.trim();
+
       // Delete from player_rankings (both as rater and rated)
-      await client.query('DELETE FROM player_rankings WHERE rater_username = $1 OR rated_username = $1', [username]);
+      await client.query('DELETE FROM player_rankings WHERE rater_username = $1 OR rated_username = $1', [cleanUsername]);
 
       // Delete from next_game_enlistment
-      await client.query('DELETE FROM next_game_enlistment WHERE username = $1', [username]);
+      await client.query('DELETE FROM next_game_enlistment WHERE username = $1', [cleanUsername]);
 
       // Delete from users
-      await client.query('DELETE FROM users WHERE username = $1', [username]);
+      await client.query('DELETE FROM users WHERE username = $1', [cleanUsername]);
 
       await client.query('COMMIT');
     } catch (err: any) {
@@ -285,28 +287,70 @@ class UserService {
 
   // עדכון פרטי משתמש (שחקן)
   public async updateUser(currentUsername: string, newUsername: string, newEmail?: string, newPassword?: string): Promise<User> {
+    const client = await pool.connect();
     try {
-      // Check if new username exists (if changed)
+      await client.query('BEGIN');
+
+      // Check if username is changing
       if (currentUsername !== newUsername) {
-        const existing = await pool.query('SELECT username FROM users WHERE username = $1', [newUsername]);
+        // Check if new username already exists
+        const existing = await client.query('SELECT username FROM users WHERE username = $1', [newUsername]);
         if (existing.rows.length > 0) {
           throw new Error('Username already exists');
         }
+
+        // Get current user details
+        const currentUserRes = await client.query('SELECT * FROM users WHERE username = $1', [currentUsername]);
+        if (currentUserRes.rows.length === 0) throw new Error('User not found');
+        const currentUser = currentUserRes.rows[0];
+
+        // Prepare new values
+        const emailToUse = newEmail !== undefined ? newEmail : currentUser.email;
+        const passwordToUse = newPassword !== undefined ? newPassword : currentUser.password;
+        const teamIdToUse = currentUser.team_id;
+
+        // Create new user with a temporary unique email to satisfy NOT NULL and UNIQUE constraints
+        const tempEmail = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}@placeholder.com`;
+
+        await client.query(
+          'INSERT INTO users (username, password, email, team_id) VALUES ($1, $2, $3, $4)',
+          [newUsername, passwordToUse, tempEmail, teamIdToUse]
+        );
+
+        // Update dependent tables to point to new user
+        await client.query('UPDATE player_rankings SET rater_username = $1 WHERE rater_username = $2', [newUsername, currentUsername]);
+        await client.query('UPDATE player_rankings SET rated_username = $1 WHERE rated_username = $2', [newUsername, currentUsername]);
+        await client.query('UPDATE next_game_enlistment SET username = $1 WHERE username = $2', [newUsername, currentUsername]);
+
+        // Delete old user
+        await client.query('DELETE FROM users WHERE username = $1', [currentUsername]);
+
+        // Now update the email of the new user to the correct one
+        await client.query('UPDATE users SET email = $1 WHERE username = $2', [emailToUse, newUsername]);
+
+        await client.query('COMMIT');
+
+        return { ...currentUser, username: newUsername, email: emailToUse, password: passwordToUse };
+      } else {
+        // Just updating email/password
+        const result = await client.query(
+          'UPDATE users SET email = COALESCE($1, email), password = COALESCE($2, password) WHERE username = $3 RETURNING *',
+          [newEmail, newPassword, currentUsername]
+        );
+
+        if (result.rows.length === 0) {
+          throw new Error('User not found');
+        }
+
+        await client.query('COMMIT');
+        return result.rows[0];
       }
-
-      const result = await pool.query(
-        'UPDATE users SET username = $1, email = COALESCE($2, email), password = COALESCE($3, password) WHERE username = $4 RETURNING *',
-        [newUsername, newEmail, newPassword, currentUsername]
-      );
-
-      if (result.rows.length === 0) {
-        throw new Error('User not found');
-      }
-
-      return result.rows[0];
     } catch (err: any) {
+      await client.query('ROLLBACK');
       console.error(err);
       throw new Error(err.message || 'Failed to update user');
+    } finally {
+      client.release();
     }
   }
 }
