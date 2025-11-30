@@ -1,5 +1,4 @@
 "use strict";
-// src/controllers/verifyToken.ts
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -17,7 +16,7 @@ const verifyToken = (req, res, next) => {
     }
     try {
         const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
+        req.user = decoded; // TypeScript כעת יבין את המבנה של `req.user`
         next();
     }
     catch (ex) {

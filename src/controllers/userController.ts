@@ -8,6 +8,7 @@ import { verifyToken } from './verifyToken';
 import jwt from 'jsonwebtoken';
 import teamService from '../services/teamService';
 import { log } from 'console';
+import pool from '../models/userModel'; // Import pool for rollback
 
 // הגדרת ממשקים (Interfaces) לטיפוסים של הבקשות
 interface RegisterRequestBody {
@@ -15,7 +16,8 @@ interface RegisterRequestBody {
   password: string;
   email: string;
   teamName: string;
-  teamPassword: string;
+  teamPassword?: string;
+  teamType?: string; // Add teamType
 }
 
 interface LoginRequestBody {
@@ -84,27 +86,66 @@ router.post(
     req: Request<{}, any, RegisterRequestBody>,
     res: Response
   ): Promise<void> => {
-    const { username, password, email, teamName, teamPassword } = req.body;
+    const { username, password, email, teamName, teamPassword, teamType } = req.body;
+    let teamId: number | undefined; // Declare outside try block
+
     try {
-      const team = await teamService.getTeamByName(teamName);
-      if (!team) {
-        res.status(400).json({ success: false, message: 'Team not found' });
-        return;
+      // If teamType is provided, we are creating a new team
+      if (teamType) {
+        // Check if team name already exists
+        const existingTeam = await teamService.getTeamByName(teamName);
+        if (existingTeam) {
+          res.status(400).json({ success: false, message: 'Team name already exists' });
+          return;
+        }
+
+        if (!teamPassword) {
+          res.status(400).json({ success: false, message: 'Team password is required' });
+          return;
+        }
+
+        // Create the team
+        const newTeam = await teamService.createTeam(teamName, teamPassword, teamType);
+        teamId = newTeam.team_id;
+      } else {
+        // Joining an existing team
+        const team = await teamService.getTeamByName(teamName);
+        if (!team) {
+          res.status(400).json({ success: false, message: 'Team not found' });
+          return;
+        }
+        if (team.team_password !== teamPassword) {
+          res
+            .status(400)
+            .json({ success: false, message: 'Invalid team password' });
+          return;
+        }
+        teamId = team.team_id;
       }
-      if (team.team_password !== teamPassword) {
-        res
-          .status(400)
-          .json({ success: false, message: 'Invalid team password' });
-        return;
-      }
+
+      // Check if this is the first user in the team (for role assignment)
+      const existingUsers = await userService.getAllUsernames(teamId);
+      const role = existingUsers.length === 0 ? 'manager' : 'player';
+
       const user = await userService.createUser(
         username,
         password,
         email,
-        team.team_id
+        teamId,
+        role
       );
+
       res.status(201).json({ success: true, user });
     } catch (err: any) {
+      // Rollback: If we created a new team but user creation failed, delete the team
+      if (teamType && teamId) { // Check if teamType was provided and teamId was set
+        try {
+          console.log(`Rolling back team creation for teamId: ${teamId}`);
+          await pool.query('DELETE FROM teams WHERE team_id = $1', [teamId]);
+        } catch (rollbackErr) {
+          console.error('Failed to rollback team creation', rollbackErr);
+        }
+      }
       res.status(500).json({ success: false, message: err.message });
     }
   }
@@ -129,7 +170,9 @@ router.post(
           { expiresIn: '20h' } // Token expires in 20 hours
         );
 
-        res.status(200).json({ success: true, user, token });
+        const isAdmin = (user as any).role === 'manager';
+
+        res.status(200).json({ success: true, user, token, is_admin: isAdmin });
       } else {
         res
           .status(401)
@@ -158,8 +201,11 @@ router.get('/usernames', verifyToken, async (req: Request, res: Response) => {
 
 router.post(
   '/rankings',
+  verifyToken, // Add verifyToken middleware
   async (req: Request<{}, {}, RankingsRequestBody>, res: Response) => {
     const { rater_username, rankings } = req.body;
+    // @ts-ignore
+    const teamId = req.user?.team_id; // Get teamId from token
     // לוגיקה להוספת רמות
 
     try {
@@ -193,7 +239,7 @@ router.post(
 
       console.log('rater_username', rater_username);
 
-      await userService.storePlayerRankings(rater_username, validRankings);
+      await userService.storePlayerRankings(rater_username, validRankings, teamId);
       res.status(200).json({ success: true });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
@@ -243,8 +289,10 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const { usernames, isTierMethod } = req.body as EnlistUsersRequestBody;
+      // @ts-ignore
+      const teamId = req.user?.team_id;
 
-      await userService.enlistUsersBox(usernames);
+      await userService.enlistUsersBox(usernames, teamId);
       // await balancedTeamsService.setBalancedTeams(getIo(), isTierMethod); // Pass method to function//!
 
       res.status(200).json({ success: true });

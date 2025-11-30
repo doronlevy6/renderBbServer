@@ -10,6 +10,7 @@ interface User {
   password: string;
   email: string;
   team_id: number;
+  role: string;
 }
 
 // UPDATED: עדכון שמות הפרמטרים למצב כללי (param1 עד param6)
@@ -42,7 +43,8 @@ class UserService {
     username: string,
     password: string,
     email: string,
-    teamId?: number // NEW: Optional team parameter
+    teamId?: number, // NEW: Optional team parameter
+    role: string = 'player' // NEW: Optional role parameter, default to 'player'
   ): Promise<User> {
     try {
       // Check if username already exists
@@ -60,8 +62,8 @@ class UserService {
       // Insert new user if username is available
       // Use NULL for empty email to avoid duplicate key constraint violations
       const result = await pool.query(
-        'INSERT INTO users (username, password, email, team_id) VALUES ($1, $2, $3, $4) RETURNING *',
-        [username, password, email || null, teamId || null]
+        'INSERT INTO users (username, password, email, team_id, role) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [username, password, email || null, teamId || null, role]
       );
 
       return result.rows[0];
@@ -134,7 +136,8 @@ class UserService {
   // אחסון דירוגי שחקנים
   public async storePlayerRankings(
     rater_username: string,
-    rankings: Ranking[]
+    rankings: Ranking[],
+    teamId: number
   ): Promise<void> {
     try {
       // Delete existing rankings for the rater
@@ -156,7 +159,7 @@ class UserService {
         } = ranking;
         await pool.query(
           // UPDATED: use new column names param1 ... param6
-          'INSERT INTO player_rankings (rater_username, rated_username, param1, param2, param3, param4, param5, param6) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+          'INSERT INTO player_rankings (rater_username, rated_username, param1, param2, param3, param4, param5, param6, team_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
           [
             rater_username,
             username,
@@ -166,6 +169,7 @@ class UserService {
             param4,
             param5,
             param6,
+            teamId
           ]
         );
       }
@@ -222,7 +226,7 @@ class UserService {
   }
 
   // הרשמה למשתמשים למשחק הבא
-  public async enlistUsersBox(usernames: string[]): Promise<boolean> {
+  public async enlistUsersBox(usernames: string[], teamId: number): Promise<boolean> {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -233,13 +237,13 @@ class UserService {
       let currentOrder: number = res.rows[0].max_order;
 
       const insertQuery = `
-        INSERT INTO next_game_enlistment (username, enlistment_order)
-        VALUES ($1, $2)
+        INSERT INTO next_game_enlistment (username, enlistment_order, team_id)
+        VALUES ($1, $2, $3)
       `;
 
       for (const username of usernames) {
         currentOrder += 1;
-        await client.query(insertQuery, [username, currentOrder]);
+        await client.query(insertQuery, [username, currentOrder, teamId]);
       }
 
       await client.query('COMMIT');
@@ -311,10 +315,11 @@ class UserService {
 
         // Create new user with a temporary unique email to satisfy NOT NULL and UNIQUE constraints
         const tempEmail = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}@placeholder.com`;
+        const roleToUse = currentUser.role;
 
         await client.query(
-          'INSERT INTO users (username, password, email, team_id) VALUES ($1, $2, $3, $4)',
-          [newUsername, passwordToUse, tempEmail, teamIdToUse]
+          'INSERT INTO users (username, password, email, team_id, role) VALUES ($1, $2, $3, $4, $5)',
+          [newUsername, passwordToUse, tempEmail, teamIdToUse, roleToUse]
         );
 
         // Update dependent tables to point to new user

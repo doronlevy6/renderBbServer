@@ -27,6 +27,7 @@ const createTables = async (): Promise<void> => {
           password VARCHAR(255) NOT NULL,
           email VARCHAR(255) NOT NULL UNIQUE,
           team_id INTEGER,                          -- NEW column for team association
+          role VARCHAR(50) DEFAULT 'player',        -- NEW: role of the user (manager/player)
           FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE SET NULL
       );
     `);
@@ -45,8 +46,10 @@ const createTables = async (): Promise<void> => {
           param4 INTEGER,   
           param5 INTEGER,   
           param6 INTEGER,   
+          team_id INTEGER,                          -- NEW: team context for rankings
           FOREIGN KEY (rater_username) REFERENCES users(username),
           FOREIGN KEY (rated_username) REFERENCES users(username),
+          FOREIGN KEY (team_id) REFERENCES teams(team_id),
           PRIMARY KEY (rater_username, rated_username)
       );
     `);
@@ -59,7 +62,9 @@ const createTables = async (): Promise<void> => {
           username VARCHAR(255) PRIMARY KEY,
           enlistment_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           enlistment_order INTEGER,
-          FOREIGN KEY (username) REFERENCES users(username)
+          team_id INTEGER,                          -- NEW: team context for enlistment
+          FOREIGN KEY (username) REFERENCES users(username),
+          FOREIGN KEY (team_id) REFERENCES teams(team_id)
       );
     `);
 
