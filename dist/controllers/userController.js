@@ -96,9 +96,8 @@ router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 username: user.username,
                 userEmail: user.email,
                 team_id: user.team_id,
-            }, process.env.JWT_SECRET, // השתמש במשתנה סביבה
-            { expiresIn: '20h' } // Token expires in 20 hours
-            );
+                role: user.role || 'player',
+            }, process.env.JWT_SECRET, { expiresIn: '20h' });
             const isAdmin = user.role === 'manager';
             res.status(200).json({ success: true, user, token, is_admin: isAdmin });
         }
@@ -294,6 +293,27 @@ router.put('/update-player/:username', verifyToken_1.verifyToken, (req, res) => 
     try {
         const user = yield userService_1.default.updateUser(username, newUsername, newEmail, newPassword);
         res.status(200).json({ success: true, user });
+    }
+    catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+}));
+router.put('/update-player-roles', verifyToken_1.verifyToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const { roleUpdates } = req.body;
+    try {
+        // @ts-ignore
+        const requesterRole = (_a = req.user) === null || _a === void 0 ? void 0 : _a.role;
+        // Only managers can update roles
+        if (requesterRole !== 'manager') {
+            res.status(403).json({ success: false, message: 'Only managers can update roles' });
+            return;
+        }
+        // Update each player's role
+        for (const update of roleUpdates) {
+            yield userService_1.default.updatePlayerRole(update.username, update.role);
+        }
+        res.status(200).json({ success: true, message: 'Roles updated successfully' });
     }
     catch (err) {
         res.status(500).json({ success: false, message: err.message });

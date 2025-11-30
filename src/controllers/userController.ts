@@ -163,11 +163,11 @@ router.post(
           {
             username: user.username,
             userEmail: user.email,
-
             team_id: user.team_id,
+            role: (user as any).role || 'player',
           },
-          process.env.JWT_SECRET as string, // השתמש במשתנה סביבה
-          { expiresIn: '20h' } // Token expires in 20 hours
+          process.env.JWT_SECRET as string,
+          { expiresIn: '20h' }
         );
 
         const isAdmin = (user as any).role === 'manager';
@@ -402,6 +402,30 @@ router.put('/update-player/:username', verifyToken, async (req: Request, res: Re
   try {
     const user = await userService.updateUser(username, newUsername, newEmail, newPassword);
     res.status(200).json({ success: true, user });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.put('/update-player-roles', verifyToken, async (req: Request, res: Response) => {
+  const { roleUpdates } = req.body as { roleUpdates: Array<{ username: string; role: string }> };
+
+  try {
+    // @ts-ignore
+    const requesterRole = req.user?.role;
+
+    // Only managers can update roles
+    if (requesterRole !== 'manager') {
+      res.status(403).json({ success: false, message: 'Only managers can update roles' });
+      return;
+    }
+
+    // Update each player's role
+    for (const update of roleUpdates) {
+      await userService.updatePlayerRole(update.username, update.role);
+    }
+
+    res.status(200).json({ success: true, message: 'Roles updated successfully' });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

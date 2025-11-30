@@ -287,6 +287,18 @@ class UserService {
             }
         });
     }
+    // Update player role (manager/player)
+    updatePlayerRole(username, role) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                yield userModel_1.default.query('UPDATE users SET role = $1 WHERE username = $2', [role, username]);
+            }
+            catch (err) {
+                console.error(err);
+                throw new Error('Failed to update player role');
+            }
+        });
+    }
 }
 const userService = new UserService();
 exports.default = userService;

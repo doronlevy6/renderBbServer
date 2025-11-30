@@ -121,7 +121,7 @@ class UserService {
   public async getAllUsers(teamId: number): Promise<User[]> {
     try {
       const result = await pool.query(
-        `SELECT username, email, password, team_id FROM users
+        `SELECT username, email, password, team_id, role FROM users
           WHERE team_id=$1 
           ORDER BY username ASC`,
         [teamId]
@@ -356,6 +356,19 @@ class UserService {
       throw new Error(err.message || 'Failed to update user');
     } finally {
       client.release();
+    }
+  }
+
+  // Update player role (manager/player)
+  public async updatePlayerRole(username: string, role: string): Promise<void> {
+    try {
+      await pool.query(
+        'UPDATE users SET role = $1 WHERE username = $2',
+        [role, username]
+      );
+    } catch (err: any) {
+      console.error(err);
+      throw new Error('Failed to update player role');
     }
   }
 }
