@@ -1,7 +1,9 @@
 
+
 import express, { Request, Response, Router } from 'express';
 import pool from '../models/userModel';
 import { verifyToken } from './verifyToken';
+import { sendPaymentConfirmationEmail } from '../services/emailService';
 
 const router: Router = express.Router();
 
@@ -10,7 +12,7 @@ const router: Router = express.Router();
 // ==========================================
 
 router.post('/record-game', verifyToken, async (req: Request, res: Response) => {
-    const { date, enlistedPlayers, base_cost, notes } = req.body;
+    const { date, enlistedPlayers, base_cost, notes, force_base_cost, specific_player_costs } = req.body;
     // @ts-ignore
     const team_id = req.user?.team_id;
 
@@ -22,7 +24,7 @@ router.post('/record-game', verifyToken, async (req: Request, res: Response) => 
     try {
         // 1. Get Team Default Cost if not provided
         let costPerGame = base_cost;
-        if (costPerGame === undefined) {
+        if (costPerGame === undefined || costPerGame === null) {
             const teamRes = await pool.query('SELECT default_game_cost FROM teams WHERE team_id = $1', [team_id]);
             if (teamRes.rows.length === 0) {
                 res.status(404).json({ success: false, message: 'Team not found' });
@@ -44,11 +46,22 @@ router.post('/record-game', verifyToken, async (req: Request, res: Response) => 
         // 3. Create Attendance Records
         if (enlistedPlayers && enlistedPlayers.length > 0) {
             for (const username of enlistedPlayers) {
-                // Check for player-specific cost override
-                const userRes = await pool.query('SELECT custom_game_cost FROM users WHERE username = $1', [username]);
                 let playerCost = costPerGame;
-                if (userRes.rows.length > 0 && userRes.rows[0].custom_game_cost !== null) {
-                    playerCost = userRes.rows[0].custom_game_cost;
+
+                // Priority 1: Specific ad-hoc override from the Save Dialog
+                if (specific_player_costs && specific_player_costs[username] !== undefined && specific_player_costs[username] !== null) {
+                    playerCost = specific_player_costs[username];
+                }
+                // Priority 2: Force Base Cost (Apply to All)
+                else if (force_base_cost) {
+                    playerCost = costPerGame;
+                }
+                // Priority 3: Custom Player Settings
+                else {
+                    const userRes = await pool.query('SELECT custom_game_cost FROM users WHERE username = $1', [username]);
+                    if (userRes.rows.length > 0 && userRes.rows[0].custom_game_cost !== null) {
+                        playerCost = userRes.rows[0].custom_game_cost;
+                    }
                 }
 
                 await pool.query(`
@@ -85,6 +98,23 @@ router.post('/add-payment', verifyToken, async (req: Request, res: Response) => 
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [username, team_id, amount, method, notes || '', date || new Date()]);
 
+        // Send payment confirmation email
+        try {
+            const userRes = await pool.query('SELECT email FROM users WHERE username = $1', [username]);
+            if (userRes.rows.length > 0 && userRes.rows[0].email) {
+                await sendPaymentConfirmationEmail(
+                    userRes.rows[0].email,
+                    username,
+                    amount,
+                    method,
+                    date || new Date()
+                );
+            }
+        } catch (emailError) {
+            // Log but don't fail the payment if email fails
+            console.error('Failed to send payment confirmation email:', emailError);
+        }
+
         res.status(200).json({ success: true, message: 'Payment recorded successfully' });
     } catch (error: any) {
         console.error('Error adding payment:', error);
@@ -99,6 +129,17 @@ router.delete('/delete-payment/:payment_id', verifyToken, async (req: Request, r
         res.status(200).json({ success: true, message: 'Payment deleted' });
     } catch (error: any) {
         console.error('Error deleting payment:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+router.delete('/delete-attendance/:attendance_id', verifyToken, async (req: Request, res: Response) => {
+    const { attendance_id } = req.params;
+    try {
+        await pool.query('DELETE FROM game_attendance WHERE attendance_id = $1', [attendance_id]);
+        res.status(200).json({ success: true, message: 'Game record deleted for player' });
+    } catch (error: any) {
+        console.error('Error deleting attendance:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
@@ -173,6 +214,63 @@ router.get('/team-settings', verifyToken, async (req: Request, res: Response) =>
 });
 
 
+// Lightweight endpoint for player balance (for Welcome Page)
+router.get('/player-balance/:username', verifyToken, async (req: Request, res: Response) => {
+    const { username } = req.params;
+    // @ts-ignore
+    const team_id = req.user?.team_id;
+
+    try {
+        // 1. Get total game costs
+        const costQuery = `
+            SELECT COALESCE(SUM(ga.applied_cost), 0) as total_owed
+            FROM game_attendance ga
+            JOIN games g ON ga.game_id = g.game_id
+            WHERE ga.username = $1 AND g.team_id = $2
+        `;
+        const costRes = await pool.query(costQuery, [username, team_id]);
+        const totalOwed = parseInt(costRes.rows[0].total_owed);
+
+        // 2. Get total payments
+        const payQuery = `
+            SELECT COALESCE(SUM(amount), 0) as total_paid
+            FROM payments
+            WHERE username = $1 AND team_id = $2
+        `;
+        const payRes = await pool.query(payQuery, [username, team_id]);
+        const totalPaid = parseInt(payRes.rows[0].total_paid);
+
+        // 3. Get player's cost per game
+        const userRes = await pool.query('SELECT custom_game_cost FROM users WHERE username = $1', [username]);
+        const customCost = userRes.rows[0]?.custom_game_cost;
+
+        // If no custom cost, get team default
+        let costPerGame = customCost;
+        if (customCost === null) {
+            const teamRes = await pool.query('SELECT default_game_cost FROM teams WHERE team_id = $1', [team_id]);
+            costPerGame = teamRes.rows[0]?.default_game_cost || 30;
+        }
+
+        // 4. Calculate balance and games credit
+        const balance = totalPaid - totalOwed; // Positive = Credit, Negative = Debt
+        const gamesCredit = costPerGame > 0 ? Math.floor(balance / costPerGame) : 0;
+
+        res.status(200).json({
+            success: true,
+            totalPaid,
+            totalOwed,
+            balance,
+            costPerGame,
+            gamesCredit
+        });
+
+    } catch (error: any) {
+        console.error('Error fetching player balance:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+
 router.get('/team-financial-summary/:team_id', verifyToken, async (req: Request, res: Response) => {
     // If team_id is distinct from token's team_id, should we allow? 
     // Usually manager can only see their own team.
@@ -186,7 +284,7 @@ router.get('/team-financial-summary/:team_id', verifyToken, async (req: Request,
     const team_id = tokenTeamId || requestedTeamId;
 
     try {
-        const usersRes = await pool.query('SELECT username FROM users WHERE team_id = $1', [team_id]);
+        const usersRes = await pool.query('SELECT username, custom_game_cost FROM users WHERE team_id = $1', [team_id]);
         const users = usersRes.rows;
 
         const summary = [];
@@ -212,7 +310,8 @@ router.get('/team-financial-summary/:team_id', verifyToken, async (req: Request,
                 username: user.username,
                 balance: paid - debt,
                 debt,
-                paid
+                paid,
+                custom_game_cost: user.custom_game_cost
             });
         }
 
