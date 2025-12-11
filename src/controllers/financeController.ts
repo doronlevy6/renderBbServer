@@ -12,7 +12,7 @@ const router: Router = express.Router();
 // ==========================================
 
 router.post('/record-game', verifyToken, async (req: Request, res: Response) => {
-    const { date, enlistedPlayers, base_cost, notes, force_base_cost, specific_player_costs, specific_player_notes } = req.body;
+    const { date, time, enlistedPlayers, base_cost, notes, force_base_cost, specific_player_costs, specific_player_notes } = req.body;
     // @ts-ignore
     const team_id = req.user?.team_id;
 
@@ -22,7 +22,16 @@ router.post('/record-game', verifyToken, async (req: Request, res: Response) => 
     }
 
     try {
-        // 1. Get Team Default Cost if not provided
+        // 1. Generate game_session_id from date and time
+        // Expected format: date = "2025-12-12", time = "19:00"
+        // Result: game_session_id = "2025-12-12_19:00"
+        let gameSessionId: string | null = null;
+        if (date && time) {
+            const dateOnly = date.split('T')[0]; // Ensure we only have YYYY-MM-DD
+            gameSessionId = `${dateOnly}_${time}`;
+        }
+
+        // 2. Get Team Default Cost if not provided
         let costPerGame = base_cost;
         if (costPerGame === undefined || costPerGame === null) {
             const teamRes = await pool.query('SELECT default_game_cost FROM teams WHERE team_id = $1', [team_id]);
@@ -33,19 +42,57 @@ router.post('/record-game', verifyToken, async (req: Request, res: Response) => 
             costPerGame = teamRes.rows[0].default_game_cost || 0;
         }
 
-        // 2. Create Game Record
-        const gameQuery = `
-      INSERT INTO games (team_id, date, base_cost, notes)
-      VALUES ($1, $2, $3, $4)
-      RETURNING game_id
-    `;
-        const gameValues = [team_id, date || new Date(), costPerGame, notes || ''];
-        const gameResult = await pool.query(gameQuery, gameValues);
-        const gameId = gameResult.rows[0].game_id;
+        let gameId: number;
 
-        // 3. Create Attendance Records
+        // 3. Check if Game Session Already Exists
+        if (gameSessionId) {
+            const existingGameRes = await pool.query(
+                'SELECT game_id FROM games WHERE game_session_id = $1 AND team_id = $2',
+                [gameSessionId, team_id]
+            );
+
+            if (existingGameRes.rows.length > 0) {
+                // Game session exists, use existing game_id
+                gameId = existingGameRes.rows[0].game_id;
+                console.log(`Adding players to existing game session: ${gameSessionId}`);
+            } else {
+                // Create new game session
+                const gameQuery = `
+                    INSERT INTO games (team_id, date, base_cost, notes, game_session_id)
+                    VALUES ($1, $2, $3, $4, $5)
+                    RETURNING game_id
+                `;
+                const gameValues = [team_id, date || new Date(), costPerGame, notes || '', gameSessionId];
+                const gameResult = await pool.query(gameQuery, gameValues);
+                gameId = gameResult.rows[0].game_id;
+                console.log(`Created new game session: ${gameSessionId}`);
+            }
+        } else {
+            // No session ID provided, create game without it (backward compatibility)
+            const gameQuery = `
+                INSERT INTO games (team_id, date, base_cost, notes)
+                VALUES ($1, $2, $3, $4)
+                RETURNING game_id
+            `;
+            const gameValues = [team_id, date || new Date(), costPerGame, notes || ''];
+            const gameResult = await pool.query(gameQuery, gameValues);
+            gameId = gameResult.rows[0].game_id;
+        }
+
+        // 4. Create Attendance Records
         if (enlistedPlayers && enlistedPlayers.length > 0) {
             for (const username of enlistedPlayers) {
+                // Check if player already exists in this game session
+                const existingAttendance = await pool.query(
+                    'SELECT attendance_id FROM game_attendance WHERE game_id = $1 AND username = $2',
+                    [gameId, username]
+                );
+
+                if (existingAttendance.rows.length > 0) {
+                    console.log(`Player ${username} already in game session, skipping...`);
+                    continue;
+                }
+
                 let playerCost = costPerGame;
                 const adjustmentNote = specific_player_notes?.[username] || '';
 
@@ -72,7 +119,7 @@ router.post('/record-game', verifyToken, async (req: Request, res: Response) => 
             }
         }
 
-        res.status(200).json({ success: true, message: 'Game recorded successfully', gameId });
+        res.status(200).json({ success: true, message: 'Game recorded successfully', gameId, gameSessionId });
     } catch (error: any) {
         console.error('Error recording game:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
@@ -210,6 +257,79 @@ router.get('/team-settings', verifyToken, async (req: Request, res: Response) =>
         const defaultCost = teamRes.rows[0]?.default_game_cost || 0;
         res.status(200).json({ success: true, defaultGameCost: defaultCost });
     } catch (e: any) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// NEW: Get list of game sessions for team
+router.get('/game-sessions', verifyToken, async (req: Request, res: Response) => {
+    // @ts-ignore
+    const team_id = req.user?.team_id;
+    if (!team_id) {
+        res.status(400).json({ success: false, message: 'No team id' });
+        return;
+    }
+
+    try {
+        const sessionsRes = await pool.query(`
+            SELECT game_id, game_session_id, date, base_cost, notes,
+                   (SELECT COUNT(*) FROM game_attendance WHERE game_id = g.game_id) as player_count
+            FROM games g
+            WHERE team_id = $1 AND game_session_id IS NOT NULL
+            ORDER BY date DESC
+            LIMIT 50
+        `, [team_id]);
+
+        res.status(200).json({
+            success: true,
+            sessions: sessionsRes.rows
+        });
+    } catch (e: any) {
+        console.error('Error fetching game sessions:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// NEW: Get players in a specific game session
+router.get('/game-session-players/:game_session_id', verifyToken, async (req: Request, res: Response) => {
+    const { game_session_id } = req.params;
+    // @ts-ignore
+    const team_id = req.user?.team_id;
+
+    if (!team_id) {
+        res.status(400).json({ success: false, message: 'No team id' });
+        return;
+    }
+
+    try {
+        // First, get the game_id from game_session_id
+        const gameRes = await pool.query(
+            'SELECT game_id, date, base_cost, notes FROM games WHERE game_session_id = $1 AND team_id = $2',
+            [game_session_id, team_id]
+        );
+
+        if (gameRes.rows.length === 0) {
+            res.status(404).json({ success: false, message: 'Game session not found' });
+            return;
+        }
+
+        const game = gameRes.rows[0];
+
+        // Get all players in this game
+        const playersRes = await pool.query(`
+            SELECT ga.attendance_id, ga.username, ga.applied_cost, ga.adjustment_note
+            FROM game_attendance ga
+            WHERE ga.game_id = $1
+            ORDER BY ga.attendance_id
+        `, [game.game_id]);
+
+        res.status(200).json({
+            success: true,
+            game: game,
+            players: playersRes.rows
+        });
+    } catch (e: any) {
+        console.error('Error fetching game session players:', e);
         res.status(500).json({ success: false, message: e.message });
     }
 });

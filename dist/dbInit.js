@@ -95,6 +95,7 @@ const createTables = () => __awaiter(void 0, void 0, void 0, function* () {
           date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           base_cost INTEGER NOT NULL,          -- Cost at the time of the game
           notes TEXT,
+          game_session_id VARCHAR(255) UNIQUE, -- NEW: Unique identifier (YYYY-MM-DD_HH:MM)
           FOREIGN KEY (team_id) REFERENCES teams(team_id)
       );
     `);
@@ -136,6 +137,7 @@ const createTables = () => __awaiter(void 0, void 0, void 0, function* () {
             yield userModel_1.default.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS default_game_cost INTEGER DEFAULT 0;`);
             yield userModel_1.default.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_game_cost INTEGER;`);
             yield userModel_1.default.query(`ALTER TABLE game_attendance ADD COLUMN IF NOT EXISTS adjustment_note TEXT;`);
+            yield userModel_1.default.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS game_session_id VARCHAR(255) UNIQUE;`);
         }
         catch (e) {
             // Ignoring error if columns exist or other migration issues

@@ -88,6 +88,7 @@ const createTables = async (): Promise<void> => {
           date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           base_cost INTEGER NOT NULL,          -- Cost at the time of the game
           notes TEXT,
+          game_session_id VARCHAR(255) UNIQUE, -- NEW: Unique identifier (YYYY-MM-DD_HH:MM)
           FOREIGN KEY (team_id) REFERENCES teams(team_id)
       );
     `);
@@ -133,6 +134,7 @@ const createTables = async (): Promise<void> => {
       await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS default_game_cost INTEGER DEFAULT 0;`);
       await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_game_cost INTEGER;`);
       await pool.query(`ALTER TABLE game_attendance ADD COLUMN IF NOT EXISTS adjustment_note TEXT;`);
+      await pool.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS game_session_id VARCHAR(255) UNIQUE;`);
     } catch (e) {
       // Ignoring error if columns exist or other migration issues
       console.log('Migration note: ' + e);
