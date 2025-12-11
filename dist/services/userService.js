@@ -78,7 +78,7 @@ class UserService {
     getAllUsers(teamId) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const result = yield userModel_1.default.query(`SELECT username, email, password, team_id FROM users
+                const result = yield userModel_1.default.query(`SELECT username, email, password, team_id, role FROM users
           WHERE team_id=$1 
           ORDER BY username ASC`, [teamId]);
                 return result.rows;

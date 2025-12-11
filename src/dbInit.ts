@@ -102,6 +102,7 @@ const createTables = async (): Promise<void> => {
           game_id INTEGER NOT NULL,
           username VARCHAR(255) NOT NULL,
           applied_cost INTEGER NOT NULL,       -- The actual cost charged to this player for this game
+          adjustment_note TEXT,                -- Manager note when applying a per-player override
           FOREIGN KEY (game_id) REFERENCES games(game_id) ON DELETE CASCADE,
           FOREIGN KEY (username) REFERENCES users(username)
       );
@@ -131,6 +132,7 @@ const createTables = async (): Promise<void> => {
     try {
       await pool.query(`ALTER TABLE teams ADD COLUMN IF NOT EXISTS default_game_cost INTEGER DEFAULT 0;`);
       await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_game_cost INTEGER;`);
+      await pool.query(`ALTER TABLE game_attendance ADD COLUMN IF NOT EXISTS adjustment_note TEXT;`);
     } catch (e) {
       // Ignoring error if columns exist or other migration issues
       console.log('Migration note: ' + e);
