@@ -470,6 +470,68 @@ router.put('/update-team-settings', verifyToken, async (req: Request, res: Respo
     }
 });
 
+// NEW: Get full financial history for ALL players in the team (for efficient preloading)
+router.get('/all-players-history/:team_id', verifyToken, async (req: Request, res: Response) => {
+    const requestedTeamId = Number(req.params.team_id);
+    // @ts-ignore
+    const tokenTeamId = req.user?.team_id;
+    const team_id = tokenTeamId || requestedTeamId;
+
+    try {
+        const usersRes = await pool.query('SELECT username, custom_game_cost FROM users WHERE team_id = $1', [team_id]);
+        const users = usersRes.rows;
+
+        const allData: Record<string, any> = {};
+
+        // Parallelize the data fetching for all users
+        await Promise.all(users.map(async (user: any) => {
+            const username = user.username;
+
+            // 1. Get Games Attended
+            const attendanceQuery = `
+                SELECT ga.attendance_id, ga.applied_cost, ga.adjustment_note, g.date, g.game_id, g.notes
+                FROM game_attendance ga
+                JOIN games g ON ga.game_id = g.game_id
+                WHERE ga.username = $1
+                ORDER BY g.date DESC
+            `;
+            const attendanceRes = await pool.query(attendanceQuery, [username]);
+
+            // 2. Get Payments Made
+            const paymentsQuery = `
+                SELECT payment_id, amount, method, date, notes
+                FROM payments
+                WHERE username = $1
+                ORDER BY date DESC
+            `;
+            const paymentsRes = await pool.query(paymentsQuery, [username]);
+
+            // 3. Calculate Balance
+            const totalCost = attendanceRes.rows.reduce((sum: number, record: any) => sum + record.applied_cost, 0);
+            const totalPaid = paymentsRes.rows.reduce((sum: number, record: any) => sum + record.amount, 0);
+            const balance = totalPaid - totalCost;
+
+            allData[username] = {
+                success: true,
+                balance,
+                totalCost,
+                totalPaid,
+                customGameCost: user.custom_game_cost,
+                history: {
+                    games: attendanceRes.rows,
+                    payments: paymentsRes.rows
+                }
+            };
+        }));
+
+        res.status(200).json({ success: true, allPlayersData: allData });
+
+    } catch (error: any) {
+        console.error('Error fetching all players history:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
 router.put('/update-user-financial-settings', verifyToken, async (req: Request, res: Response) => {
     const { username, custom_game_cost } = req.body;
     try {
