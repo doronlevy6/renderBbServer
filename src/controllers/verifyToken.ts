@@ -6,6 +6,7 @@ interface UserPayload {
   username: string;
   userEmail: string;
   team_id: number;
+  role?: string;
 }
 
 // הרחבת Request כך שיכיל `user`

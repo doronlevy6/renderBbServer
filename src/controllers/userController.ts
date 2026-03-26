@@ -366,20 +366,42 @@ router.get('/players', verifyToken, async (req: Request, res: Response) => {
 });
 
 router.post('/add-player', verifyToken, async (req: Request, res: Response) => {
-  const { username, password, email, teamId } = req.body;
+  const { username, password, email } = req.body as {
+    username?: string;
+    password?: string;
+    email?: string;
+  };
   try {
     // @ts-ignore
     const requesterTeamId = req.user?.team_id;
+    // @ts-ignore
+    const requesterRole = req.user?.role;
+    const cleanUsername = username?.trim();
+    const cleanEmail = email?.trim() || '';
+    const cleanPassword = password?.trim() || '123456';
 
-    // If teamId is not provided, use the requester's teamId
-    const targetTeamId = teamId || requesterTeamId;
+    if (requesterRole !== 'manager') {
+      res.status(403).json({ success: false, message: 'Only managers can add players' });
+      return;
+    }
 
-    if (!targetTeamId) {
+    if (!cleanUsername) {
+      res.status(400).json({ success: false, message: 'Username is required' });
+      return;
+    }
+
+    if (!requesterTeamId) {
       res.status(400).json({ success: false, message: 'Team ID is required. Please ensure you are logged in and associated with a team.' });
       return;
     }
 
-    const user = await userService.createUser(username, password || '123456', email || '', targetTeamId);
+    const user = await userService.createUser(
+      cleanUsername,
+      cleanPassword,
+      cleanEmail,
+      requesterTeamId,
+      'player'
+    );
     res.status(201).json({ success: true, user });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

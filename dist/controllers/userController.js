@@ -259,18 +259,29 @@ router.get('/players', verifyToken_1.verifyToken, (req, res) => __awaiter(void 0
     }
 }));
 router.post('/add-player', verifyToken_1.verifyToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    const { username, password, email, teamId } = req.body;
+    var _a, _b;
+    const { username, password, email } = req.body;
     try {
         // @ts-ignore
         const requesterTeamId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.team_id;
-        // If teamId is not provided, use the requester's teamId
-        const targetTeamId = teamId || requesterTeamId;
-        if (!targetTeamId) {
+        // @ts-ignore
+        const requesterRole = (_b = req.user) === null || _b === void 0 ? void 0 : _b.role;
+        const cleanUsername = username === null || username === void 0 ? void 0 : username.trim();
+        const cleanEmail = (email === null || email === void 0 ? void 0 : email.trim()) || '';
+        const cleanPassword = (password === null || password === void 0 ? void 0 : password.trim()) || '123456';
+        if (requesterRole !== 'manager') {
+            res.status(403).json({ success: false, message: 'Only managers can add players' });
+            return;
+        }
+        if (!cleanUsername) {
+            res.status(400).json({ success: false, message: 'Username is required' });
+            return;
+        }
+        if (!requesterTeamId) {
             res.status(400).json({ success: false, message: 'Team ID is required. Please ensure you are logged in and associated with a team.' });
             return;
         }
-        const user = yield userService_1.default.createUser(username, password || '123456', email || '', targetTeamId);
+        const user = yield userService_1.default.createUser(cleanUsername, cleanPassword, cleanEmail, requesterTeamId, 'player');
         res.status(201).json({ success: true, user });
     }
     catch (err) {
