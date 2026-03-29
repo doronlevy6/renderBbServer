@@ -52,6 +52,10 @@ Create prod template once:
   - Prints the currently selected combination from:
     - `/Users/dwrwnlwy/projects/BB_server/.logs/active-mode.txt`
 
+Workspace startup tasks also update generated code snapshot files:
+- `/Users/dwrwnlwy/projects/BB_server/src/generated/runtimeMode.ts`
+- `/Users/dwrwnlwy/projects/BB_flutter/lib/generated/runtime_mode.g.dart`
+
 ## Refresh Dev DB From Prod
 
 Use `Refresh Dev DB From Prod` when you want the dev database to become an exact copy of production.

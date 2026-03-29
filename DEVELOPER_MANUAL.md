@@ -36,6 +36,9 @@ This prints the current combination:
 - Backend DB mode
 
 Inside the app, the Home page shows a small mode badge in local work.
+The startup task also writes mode snapshot code files:
+- `/Users/dwrwnlwy/projects/BB_server/src/generated/runtimeMode.ts`
+- `/Users/dwrwnlwy/projects/BB_flutter/lib/generated/runtime_mode.g.dart`
 
 ## 4. Login
 

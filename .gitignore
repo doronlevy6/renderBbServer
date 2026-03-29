@@ -7,5 +7,6 @@ package-lock.json
 
 models/userModel.js
 .logs/
+src/generated/runtimeMode.ts
 .env
 .env.proddb
