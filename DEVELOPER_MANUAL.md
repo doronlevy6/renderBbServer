@@ -194,6 +194,49 @@ ORDER BY table_name;
 ```
 3. ודא ש־`current_database()` מחזיר `bb-db`.
 
+### 9.2 אם עדיין ריק ב־pgAdmin: ליצור חיבור חדש נקי (מומלץ)
+
+אם אתה עדיין רואה "ריק", בדרך כלל השרת השמור ב־pgAdmin מצביע ליעד לא נכון.
+
+1. בצד שמאל ב־pgAdmin: קליק ימני על השרת הישן -> `Delete/Drop Server`.
+2. קליק ימני על `Servers` -> `Register` -> `Server...`.
+3. בלשונית `General`:
+- Name: `bb-local`
+4. בלשונית `Connection`:
+- Host name/address: `host.docker.internal`
+- Port: `5432`
+- Maintenance database: `bb-db`
+- Username: `postgres`
+- Password: `0000`
+- סמן `Save Password`
+5. לחץ `Save`.
+6. פתח:
+- `Servers` -> `bb-local` -> `Databases` -> `bb-db` -> `Schemas` -> `public` -> `Tables`
+7. קליק ימני על `users` -> `View/Edit Data` -> `All Rows`.
+
+בדיקת אימות אחת אחרונה:
+1. קליק ימני על `bb-db` -> `Query Tool`
+2. הרץ:
+```sql
+SELECT current_database(), current_user;
+SELECT * FROM (
+  SELECT 'users' AS t, count(*) AS c FROM users
+  UNION ALL SELECT 'teams', count(*) FROM teams
+  UNION ALL SELECT 'payments', count(*) FROM payments
+  UNION ALL SELECT 'games', count(*) FROM games
+  UNION ALL SELECT 'player_rankings', count(*) FROM player_rankings
+  UNION ALL SELECT 'game_teams', count(*) FROM game_teams
+) s
+ORDER BY t;
+```
+3. התוצאה התקינה כרגע אצלך:
+- `users = 39`
+- `teams = 14`
+- `player_rankings = 344`
+- `game_teams = 286`
+- `games = 0`
+- `payments = 0`
+
 ## 10. Deploy לפרונט (GitHub Pages)
 
 משימה:
