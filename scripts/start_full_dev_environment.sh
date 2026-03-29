@@ -260,6 +260,21 @@ start_frontend_if_needed() {
 }
 
 open_pgadmin_ui() {
+  local check_url="${PGADMIN_URL}"
+  local max_wait=40
+  local waited=0
+
+  if has_cmd curl; then
+    while ! curl -s -o /dev/null -I --max-time 2 "${check_url}"; do
+      sleep 1
+      waited=$((waited + 1))
+      if (( waited >= max_wait )); then
+        log "pgAdmin HTTP check timed out after ${max_wait}s. Opening URL anyway."
+        break
+      fi
+    done
+  fi
+
   log "Opening pgAdmin UI: ${PGADMIN_URL}"
   open "${PGADMIN_URL}" >/dev/null 2>&1 || true
 }
