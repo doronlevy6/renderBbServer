@@ -3,7 +3,8 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 
-dotenv.config();
+const envFile = process.env.ENV_FILE || '.env';
+dotenv.config({ path: envFile });
 
 const { PGHOST, PGDATABASE, PGUSER, PGPASSWORD, ENDPOINT_ID, SSL_FALSE } =
   process.env;

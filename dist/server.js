@@ -12,7 +12,9 @@ const userController_1 = __importDefault(require("./controllers/userController")
 const financeController_1 = __importDefault(require("./controllers/financeController")); // NEW: Finance routes
 const socket_1 = require("./socket/socket");
 const dbInit_1 = __importDefault(require("./dbInit"));
-dotenv_1.default.config();
+const envFile = process.env.ENV_FILE || '.env';
+dotenv_1.default.config({ path: envFile });
+console.log(`Using environment file: ${envFile}`);
 const app = (0, express_1.default)();
 const PORT = Number(process.env.PORT) || 9090;
 app.use((0, cors_1.default)()); // Enable CORS

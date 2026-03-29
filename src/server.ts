@@ -8,7 +8,10 @@ import userRoutes from './controllers/userController'; // Existing routes
 import financeRoutes from './controllers/financeController'; // NEW: Finance routes
 import { initialize } from './socket/socket';
 import createTables from './dbInit';
-dotenv.config();
+
+const envFile = process.env.ENV_FILE || '.env';
+dotenv.config({ path: envFile });
+console.log(`Using environment file: ${envFile}`);
 
 const app: Application = express();
 const PORT: number = Number(process.env.PORT) || 9090;

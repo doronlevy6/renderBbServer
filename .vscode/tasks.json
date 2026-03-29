@@ -4,7 +4,71 @@
     {
       "label": "Start Full Dev Environment",
       "type": "shell",
-      "command": "./scripts/start_full_dev_environment.sh",
+      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Workspace: FE Local API + BE Dev DB",
+      "type": "shell",
+      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Workspace: FE Local API + BE Prod DB",
+      "type": "shell",
+      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=prod ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Workspace: FE Prod API + BE Dev DB",
+      "type": "shell",
+      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=dev ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Workspace: FE Prod API + BE Prod DB",
+      "type": "shell",
+      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=prod ./scripts/start_full_dev_environment.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -22,10 +86,6 @@
       "command": "./deploy_web.sh",
       "options": {
         "cwd": "${workspaceFolder}/../BB_flutter"
-      },
-      "group": {
-        "kind": "build",
-        "isDefault": true
       },
       "presentation": {
         "echo": true,
