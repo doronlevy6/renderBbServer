@@ -88,11 +88,24 @@ To build and publish to GitHub Pages:
 
 That build is release mode and hides the local environment badge.
 
-## 8. Good Defaults
+## 8. Refresh Dev DB From Prod
+
+If you want the dev database to look exactly like production:
+- run `Refresh Dev DB From Prod`
+
+It will:
+- dump production
+- drop the local dev database
+- recreate it
+- restore the production dump into dev
+- disconnect any local backend sessions that were connected to dev
+
+Production is not changed.
+
+## 9. Good Defaults
 
 If you are not sure what to do:
 1. Use `Start Full Dev Environment`
 2. Login with your normal user
 3. Use pgAdmin only if you need to inspect `users` or roles
 4. Use `Reset Local Data (Debug)` only when you want a clean local state
-

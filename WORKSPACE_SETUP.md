@@ -19,6 +19,7 @@ Then run:
 - `Workspace: FE Prod API + BE Dev DB`
 - `Workspace: FE Prod API + BE Prod DB`
 - `Deploy Web to GitHub Pages`
+- `Refresh Dev DB From Prod`
 
 ## Environment Files (Backend DB Mode)
 
@@ -50,6 +51,26 @@ Create prod template once:
 - `Workspace: Show Active Modes`
   - Prints the currently selected combination from:
     - `/Users/dwrwnlwy/projects/BB_server/.logs/active-mode.txt`
+
+## Refresh Dev DB From Prod
+
+Use `Refresh Dev DB From Prod` when you want the dev database to become an exact copy of production.
+
+What it does:
+- Starts Docker if needed
+- Starts `bb-db` if needed
+- Dumps the production database
+- Drops the local dev database
+- Recreates it
+- Restores the production dump into dev
+- Disconnects any local backend sessions that were using dev
+
+What it does not do:
+- It does not change production
+- It does not sanitize data
+
+Before it runs, it asks you to type:
+- `REFRESH`
 
 ## What Startup Script Guarantees
 

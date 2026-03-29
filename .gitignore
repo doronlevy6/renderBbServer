@@ -6,5 +6,6 @@
 package-lock.json
 
 models/userModel.js
+.logs/
 .env
 .env.proddb
