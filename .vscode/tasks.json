@@ -3,11 +3,12 @@
   "tasks": [
     {
       "label": "Start Full Dev Environment",
-      "type": "shell",
-      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev ./scripts/start_full_dev_environment.sh",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Local API + BE Dev DB",
+        "_Backend: Dev DB",
+        "_Frontend: Local API"
+      ],
       "group": {
         "kind": "build",
         "isDefault": true
@@ -22,11 +23,12 @@
     },
     {
       "label": "Workspace: FE Local API + BE Dev DB",
-      "type": "shell",
-      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev ./scripts/start_full_dev_environment.sh",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Local API + BE Dev DB",
+        "_Backend: Dev DB",
+        "_Frontend: Local API"
+      ],
       "presentation": {
         "echo": true,
         "reveal": "always",
@@ -37,11 +39,12 @@
     },
     {
       "label": "Workspace: FE Local API + BE Prod DB",
-      "type": "shell",
-      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=prod ./scripts/start_full_dev_environment.sh",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Local API + BE Prod DB",
+        "_Backend: Prod DB",
+        "_Frontend: Local API"
+      ],
       "presentation": {
         "echo": true,
         "reveal": "always",
@@ -52,11 +55,12 @@
     },
     {
       "label": "Workspace: FE Prod API + BE Dev DB",
-      "type": "shell",
-      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=dev ./scripts/start_full_dev_environment.sh",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Prod API + BE Dev DB",
+        "_Backend: Dev DB",
+        "_Frontend: Prod API"
+      ],
       "presentation": {
         "echo": true,
         "reveal": "always",
@@ -67,11 +71,12 @@
     },
     {
       "label": "Workspace: FE Prod API + BE Prod DB",
-      "type": "shell",
-      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=prod ./scripts/start_full_dev_environment.sh",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Prod API + BE Prod DB",
+        "_Backend: Prod DB",
+        "_Frontend: Prod API"
+      ],
       "presentation": {
         "echo": true,
         "reveal": "always",
@@ -79,6 +84,186 @@
         "panel": "shared"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "_Prepare: FE Local API + BE Dev DB",
+      "type": "shell",
+      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "_Prepare: FE Local API + BE Prod DB",
+      "type": "shell",
+      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=prod START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "_Prepare: FE Prod API + BE Dev DB",
+      "type": "shell",
+      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=dev START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "_Prepare: FE Prod API + BE Prod DB",
+      "type": "shell",
+      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=prod START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "_Backend: Dev DB",
+      "type": "shell",
+      "command": "./scripts/run_backend_terminal.sh dev ${workspaceFolder}/.env.devdb 9090 ${workspaceFolder}/.logs/backend.meta ${workspaceFolder}/.logs/backend-dev.pid ${workspaceFolder}",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "isBackground": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "bb-runtime"
+      },
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Server running on port 9090"
+        }
+      }
+    },
+    {
+      "label": "_Backend: Prod DB",
+      "type": "shell",
+      "command": "./scripts/run_backend_terminal.sh prod ${workspaceFolder}/.env.proddb 9090 ${workspaceFolder}/.logs/backend.meta ${workspaceFolder}/.logs/backend-prod.pid ${workspaceFolder}",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "isBackground": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "bb-runtime"
+      },
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Server running on port 9090"
+        }
+      }
+    },
+    {
+      "label": "_Frontend: Local API",
+      "type": "shell",
+      "command": "./scripts/run_frontend_terminal.sh local LOCAL 7357 ${workspaceFolder}/../BB_flutter/.logs/frontend.meta ${workspaceFolder}/../BB_flutter/.logs/flutter-web-local.pid ${workspaceFolder}/../BB_flutter",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "isBackground": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "bb-runtime"
+      },
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "A Dart VM Service on Chrome is available at:|Flutter run key commands\\."
+        }
+      }
+    },
+    {
+      "label": "_Frontend: Prod API",
+      "type": "shell",
+      "command": "./scripts/run_frontend_terminal.sh prod PROD 7357 ${workspaceFolder}/../BB_flutter/.logs/frontend.meta ${workspaceFolder}/../BB_flutter/.logs/flutter-web-prod.pid ${workspaceFolder}/../BB_flutter",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "isBackground": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "bb-runtime"
+      },
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "A Dart VM Service on Chrome is available at:|Flutter run key commands\\."
+        }
+      }
     },
     {
       "label": "Workspace: Show Active Modes",
