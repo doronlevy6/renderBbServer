@@ -28,14 +28,19 @@ Default mode:
 
 ## 3. See What You Are Running
 
-Run:
-- `Workspace: Show Active Modes`
+To identify the current environment in one click:
+1. In VS Code open `Terminal` -> `Run Task...`
+2. Click `Workspace: Show Active Modes`
 
 This prints the current combination:
 - Frontend API mode
 - Backend DB mode
+- Frontend APP_ENV
+- Backend ENV file
 
-Inside the app, the Home page shows a small mode badge in local work.
+You can also see it here:
+- Inside the app Home page: `FE: LOCAL` or `FE: PROD`
+- `/Users/dwrwnlwy/projects/BB_server/.logs/active-mode.txt`
 The startup task also writes mode snapshot code files:
 - `/Users/dwrwnlwy/projects/BB_server/src/generated/runtimeMode.ts`
 - `/Users/dwrwnlwy/projects/BB_flutter/lib/generated/runtime_mode.g.dart`

@@ -50,7 +50,13 @@ Create prod template once:
   - Frontend points to production backend (`APP_ENV=PROD`)
   - Backend local process runs with `.env.proddb`
 - `Workspace: Show Active Modes`
-  - Prints the currently selected combination from:
+  - Click this when you want to know exactly where you are working now
+  - Prints:
+    - Frontend API mode
+    - Backend DB mode
+    - Frontend APP_ENV
+    - Backend ENV file
+  - Reads from:
     - `/Users/dwrwnlwy/projects/BB_server/.logs/active-mode.txt`
 
 Workspace startup tasks also update generated code snapshot files:
