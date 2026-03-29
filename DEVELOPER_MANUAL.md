@@ -118,11 +118,13 @@
 ## 8. Deploy לשרת (קוד)
 
 משימה:
-- `Deploy Server Branch to Origin`
+- `Deploy Server to Production (main)`
 
 מה היא עושה:
 - `npm run build`
-- דחיפה של הענף הנוכחי ל־`origin`
+- יצירת גיבוי ל־`main` הנוכחי
+- החלפת `main` בתוכן של הענף הנוכחי
+- דחיפה ל־`origin/main`
 
 חשוב:
 - ה־DB של הפרודקשן המארח לא נקבע מ־`.env.devdb`/`.env.proddb` המקומיים.
@@ -147,5 +149,5 @@
 3. עבודה רגילה
 4. אם צריך, החלפת סביבה עם אחד מ־`Workspace: FE ...`
 5. לפני deploy: בדיקת מצב שוב עם `Show Active Modes`
-6. Deploy פרונט/שרת לפי הצורך
+6. `Deploy Web to GitHub Pages` או `Deploy Server to Production (main)` לפי הצורך
 7. `Stop Full Dev Environment`

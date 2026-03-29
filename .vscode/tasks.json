@@ -126,7 +126,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Deploy Server Branch to Origin",
+      "label": "Deploy Server to Production (main)",
       "type": "shell",
       "command": "./scripts/deploy_server.sh",
       "options": {
