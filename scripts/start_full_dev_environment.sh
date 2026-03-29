@@ -11,6 +11,7 @@ DB_CONTAINER="${DB_CONTAINER:-bb-db}"
 PGADMIN_CONTAINER="${PGADMIN_CONTAINER:-pgadmin}"
 PGADMIN_URL="${PGADMIN_URL:-http://localhost:8080/browser/}"
 OPEN_PGADMIN_UI="${OPEN_PGADMIN_UI:-0}"
+START_APP_PROCESSES="${START_APP_PROCESSES:-1}"
 BACKEND_PORT="${BACKEND_PORT:-9090}"
 FRONTEND_PORT="${FRONTEND_PORT:-7357}"
 
@@ -84,13 +85,17 @@ open_command_in_terminal() {
   local command="$1"
   local applescript_command
   if ! has_cmd osascript; then
-    echo "[dev-start] ERROR: osascript is required on macOS to launch background terminals."
+    echo "[dev-start] ERROR: osascript is required on macOS to launch visible Terminal.app sessions."
     exit 1
   fi
 
   applescript_command="${command//\\/\\\\}"
   applescript_command="${applescript_command//\"/\\\"}"
-  osascript -e "tell application \"Terminal\" to do script \"${applescript_command}\"" >/dev/null 2>&1
+  osascript \
+    -e "tell application \"Terminal\"" \
+    -e "activate" \
+    -e "do script \"${applescript_command}\"" \
+    -e "end tell" >/dev/null 2>&1
 }
 
 pid_is_alive() {
@@ -216,6 +221,7 @@ start_backend_if_needed() {
   local mode="$1"
   local env_file="$2"
   local pid_file="${LOG_DIR_SERVER}/backend-${mode}.pid"
+  local runner_script="${SCRIPT_DIR}/run_backend_terminal.sh"
   mkdir -p "${LOG_DIR_SERVER}"
 
   restart_existing_backend_if_mode_changed "${mode}"
@@ -236,21 +242,11 @@ start_backend_if_needed() {
     return
   fi
 
-  log "Starting backend in Terminal.app (db-mode=${mode}, ENV_FILE=$(basename "${env_file}"))..."
+  log "Opening visible backend terminal (db-mode=${mode}, ENV_FILE=$(basename "${env_file}"))..."
   local backend_command
-  backend_command="cd $(printf '%q' "${SERVER_DIR}") && ENV_FILE=$(printf '%q' "${env_file}") npm run dev"
+  backend_command="$(printf '%q ' "${runner_script}" "${mode}" "${env_file}" "${BACKEND_PORT}" "${BACKEND_META_FILE}" "${pid_file}" "${SERVER_DIR}")"
   open_command_in_terminal "${backend_command}"
   wait_for_port "${BACKEND_PORT}" "Backend" 20
-  local pid
-  pid="$(pid_for_listening_port "${BACKEND_PORT}")"
-  if [[ -n "${pid}" ]]; then
-    echo "${pid}" > "${pid_file}"
-  fi
-  {
-    echo "PID=${pid}"
-    echo "MODE=${mode}"
-    echo "ENV_FILE=${env_file}"
-  } > "${BACKEND_META_FILE}"
   log "Backend is listening on ${BACKEND_PORT}."
 }
 
@@ -275,6 +271,7 @@ restart_existing_frontend_if_mode_changed() {
 start_frontend_if_needed() {
   local api_mode="$1"
   local pid_file="${LOG_DIR_FLUTTER}/flutter-web-${api_mode}.pid"
+  local runner_script="${SCRIPT_DIR}/run_frontend_terminal.sh"
   local app_env
   if [[ "${api_mode}" == "local" ]]; then
     app_env="LOCAL"
@@ -302,27 +299,16 @@ start_frontend_if_needed() {
     return
   fi
 
-  if pgrep -f "flutter run -d chrome" >/dev/null 2>&1; then
-    log "Detected existing 'flutter run -d chrome' process. Skipping duplicate start."
+  if pgrep -f "flutter run -d chrome --web-port ${FRONTEND_PORT}" >/dev/null 2>&1; then
+    log "Detected existing frontend launch command for port ${FRONTEND_PORT}. Skipping duplicate start."
     return
   fi
 
-  log "Starting frontend in Terminal.app (api-mode=${api_mode}, APP_ENV=${app_env})..."
+  log "Opening visible frontend terminal (api-mode=${api_mode}, APP_ENV=${app_env})..."
   local frontend_command
-  frontend_command="cd $(printf '%q' "${FLUTTER_DIR}") && flutter run -d chrome --web-port ${FRONTEND_PORT} --dart-define=APP_ENV=${app_env}"
+  frontend_command="$(printf '%q ' "${runner_script}" "${api_mode}" "${app_env}" "${FRONTEND_PORT}" "${FRONTEND_META_FILE}" "${pid_file}" "${FLUTTER_DIR}")"
   open_command_in_terminal "${frontend_command}"
-  wait_for_port "${FRONTEND_PORT}" "Frontend" 45
-  local pid
-  pid="$(pid_for_listening_port "${FRONTEND_PORT}")"
-  if [[ -n "${pid}" ]]; then
-    echo "${pid}" > "${pid_file}"
-  fi
-  {
-    echo "PID=${pid}"
-    echo "API_MODE=${api_mode}"
-    echo "APP_ENV=${app_env}"
-  } > "${FRONTEND_META_FILE}"
-  log "Frontend is listening on ${FRONTEND_PORT}."
+  log "Frontend terminal opened. Flutter may take a little time to finish booting Chrome."
 }
 
 open_pgadmin_ui() {
@@ -444,10 +430,15 @@ main() {
   open_pgadmin_ui
   local backend_env_file
   backend_env_file="$(ensure_backend_env_file "${BACKEND_DB_MODE}")"
-  start_backend_if_needed "${BACKEND_DB_MODE}" "${backend_env_file}"
-  start_frontend_if_needed "${FRONTEND_API_MODE}"
   write_active_mode_file "${backend_env_file}"
   write_generated_mode_code_files "${backend_env_file}"
+
+  if [[ "${START_APP_PROCESSES}" == "1" ]]; then
+    start_backend_if_needed "${BACKEND_DB_MODE}" "${backend_env_file}"
+    start_frontend_if_needed "${FRONTEND_API_MODE}"
+  else
+    log "Skipping backend/frontend launch because START_APP_PROCESSES=${START_APP_PROCESSES}."
+  fi
 
   log "Done. Safe to run this script again (idempotent)."
   log "Active combination: frontend-api=${FRONTEND_API_MODE}, backend-db=${BACKEND_DB_MODE}"

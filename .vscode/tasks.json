@@ -98,7 +98,7 @@
     {
       "label": "Open pgAdmin UI",
       "type": "shell",
-      "command": "OPEN_PGADMIN_UI=1 ./scripts/start_full_dev_environment.sh",
+      "command": "OPEN_PGADMIN_UI=1 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },
