@@ -10,6 +10,7 @@ FLUTTER_DIR="${FLUTTER_DIR:-${PROJECTS_DIR}/BB_flutter}"
 DB_CONTAINER="${DB_CONTAINER:-bb-db}"
 PGADMIN_CONTAINER="${PGADMIN_CONTAINER:-pgadmin}"
 PGADMIN_URL="${PGADMIN_URL:-http://localhost:8080/browser/}"
+OPEN_PGADMIN_UI="${OPEN_PGADMIN_UI:-0}"
 BACKEND_PORT="${BACKEND_PORT:-9090}"
 FRONTEND_PORT="${FRONTEND_PORT:-7357}"
 
@@ -35,6 +36,61 @@ has_cmd() {
 is_port_listening() {
   local port="$1"
   lsof -nP -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1
+}
+
+pid_for_listening_port() {
+  local port="$1"
+  lsof -nP -tiTCP:"${port}" -sTCP:LISTEN 2>/dev/null | head -n 1
+}
+
+wait_for_port() {
+  local port="$1"
+  local label="$2"
+  local max_wait="${3:-20}"
+  local waited=0
+
+  while ! is_port_listening "${port}"; do
+    sleep 1
+    waited=$((waited + 1))
+    if (( waited >= max_wait )); then
+      echo "[dev-start] ERROR: ${label} did not start listening on port ${port} within ${max_wait} seconds."
+      return 1
+    fi
+  done
+
+  return 0
+}
+
+kill_listening_process_if_matches() {
+  local port="$1"
+  local label="$2"
+  local regex="$3"
+  local pid
+  pid="$(pid_for_listening_port "${port}")"
+  if [[ -z "${pid}" ]]; then
+    return 0
+  fi
+
+  local cmd
+  cmd="$(ps -p "${pid}" -o command= 2>/dev/null || true)"
+  if [[ "${cmd}" =~ ${regex} ]]; then
+    log "Stopping ${label} on port ${port} to switch modes."
+    kill "${pid}" >/dev/null 2>&1 || true
+    sleep 1
+  fi
+}
+
+open_command_in_terminal() {
+  local command="$1"
+  local applescript_command
+  if ! has_cmd osascript; then
+    echo "[dev-start] ERROR: osascript is required on macOS to launch background terminals."
+    exit 1
+  fi
+
+  applescript_command="${command//\\/\\\\}"
+  applescript_command="${applescript_command//\"/\\\"}"
+  osascript -e "tell application \"Terminal\" to do script \"${applescript_command}\"" >/dev/null 2>&1
 }
 
 pid_is_alive() {
@@ -151,6 +207,8 @@ restart_existing_backend_if_mode_changed() {
       kill "${existing_pid}" >/dev/null 2>&1 || true
       sleep 1
     fi
+  elif [[ -n "${existing_mode}" ]] && [[ "${existing_mode}" != "${requested_mode}" ]]; then
+    kill_listening_process_if_matches "${BACKEND_PORT}" "backend" "(node|ts-node|tsx|npm)"
   fi
 }
 
@@ -178,19 +236,22 @@ start_backend_if_needed() {
     return
   fi
 
-  log "Starting backend (npm run dev, db-mode=${mode}, ENV_FILE=$(basename "${env_file}"))..."
-  (
-    cd "${SERVER_DIR}"
-    ENV_FILE="${env_file}" nohup npm run dev > "${LOG_DIR_SERVER}/backend-${mode}.log" 2>&1 &
-    local pid=$!
+  log "Starting backend in Terminal.app (db-mode=${mode}, ENV_FILE=$(basename "${env_file}"))..."
+  local backend_command
+  backend_command="cd $(printf '%q' "${SERVER_DIR}") && ENV_FILE=$(printf '%q' "${env_file}") npm run dev"
+  open_command_in_terminal "${backend_command}"
+  wait_for_port "${BACKEND_PORT}" "Backend" 20
+  local pid
+  pid="$(pid_for_listening_port "${BACKEND_PORT}")"
+  if [[ -n "${pid}" ]]; then
     echo "${pid}" > "${pid_file}"
-    {
-      echo "PID=${pid}"
-      echo "MODE=${mode}"
-      echo "ENV_FILE=${env_file}"
-    } > "${BACKEND_META_FILE}"
-  )
-  log "Backend start command sent."
+  fi
+  {
+    echo "PID=${pid}"
+    echo "MODE=${mode}"
+    echo "ENV_FILE=${env_file}"
+  } > "${BACKEND_META_FILE}"
+  log "Backend is listening on ${BACKEND_PORT}."
 }
 
 restart_existing_frontend_if_mode_changed() {
@@ -206,6 +267,8 @@ restart_existing_frontend_if_mode_changed() {
       kill "${existing_pid}" >/dev/null 2>&1 || true
       sleep 1
     fi
+  elif [[ -n "${existing_mode}" ]] && [[ "${existing_mode}" != "${requested_mode}" ]]; then
+    kill_listening_process_if_matches "${FRONTEND_PORT}" "frontend" "(flutter|dart)"
   fi
 }
 
@@ -244,22 +307,30 @@ start_frontend_if_needed() {
     return
   fi
 
-  log "Starting frontend (api-mode=${api_mode}, APP_ENV=${app_env})..."
-  (
-    cd "${FLUTTER_DIR}"
-    nohup flutter run -d chrome --web-port "${FRONTEND_PORT}" --dart-define="APP_ENV=${app_env}" > "${LOG_DIR_FLUTTER}/flutter-web-${api_mode}.log" 2>&1 &
-    local pid=$!
+  log "Starting frontend in Terminal.app (api-mode=${api_mode}, APP_ENV=${app_env})..."
+  local frontend_command
+  frontend_command="cd $(printf '%q' "${FLUTTER_DIR}") && flutter run -d chrome --web-port ${FRONTEND_PORT} --dart-define=APP_ENV=${app_env}"
+  open_command_in_terminal "${frontend_command}"
+  wait_for_port "${FRONTEND_PORT}" "Frontend" 45
+  local pid
+  pid="$(pid_for_listening_port "${FRONTEND_PORT}")"
+  if [[ -n "${pid}" ]]; then
     echo "${pid}" > "${pid_file}"
-    {
-      echo "PID=${pid}"
-      echo "API_MODE=${api_mode}"
-      echo "APP_ENV=${app_env}"
-    } > "${FRONTEND_META_FILE}"
-  )
-  log "Frontend start command sent."
+  fi
+  {
+    echo "PID=${pid}"
+    echo "API_MODE=${api_mode}"
+    echo "APP_ENV=${app_env}"
+  } > "${FRONTEND_META_FILE}"
+  log "Frontend is listening on ${FRONTEND_PORT}."
 }
 
 open_pgadmin_ui() {
+  if [[ "${OPEN_PGADMIN_UI}" != "1" ]]; then
+    log "Skipping pgAdmin browser auto-open."
+    return
+  fi
+
   local check_url="${PGADMIN_URL}"
   local max_wait=40
   local waited=0
