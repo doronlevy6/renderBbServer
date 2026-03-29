@@ -81,6 +81,21 @@
       "problemMatcher": []
     },
     {
+      "label": "Workspace: Show Active Modes",
+      "type": "shell",
+      "command": "if [ -f ./.logs/active-mode.txt ]; then cat ./.logs/active-mode.txt; else echo \"No active mode file yet. Run a Workspace task first.\"; fi",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Deploy Web to GitHub Pages",
       "type": "shell",
       "command": "./deploy_web.sh",

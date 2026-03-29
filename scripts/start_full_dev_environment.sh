@@ -17,6 +17,7 @@ LOG_DIR_SERVER="${SERVER_DIR}/.logs"
 LOG_DIR_FLUTTER="${FLUTTER_DIR}/.logs"
 BACKEND_META_FILE="${LOG_DIR_SERVER}/backend.meta"
 FRONTEND_META_FILE="${LOG_DIR_FLUTTER}/frontend.meta"
+ACTIVE_MODE_FILE="${LOG_DIR_SERVER}/active-mode.txt"
 
 FRONTEND_API_MODE="${FRONTEND_API_MODE:-local}" # local | prod
 BACKEND_DB_MODE="${BACKEND_DB_MODE:-dev}" # dev | prod
@@ -261,6 +262,18 @@ open_pgadmin_ui() {
   open "${PGADMIN_URL}" >/dev/null 2>&1 || true
 }
 
+write_active_mode_file() {
+  mkdir -p "${LOG_DIR_SERVER}"
+  cat > "${ACTIVE_MODE_FILE}" <<EOF
+Frontend API Mode: ${FRONTEND_API_MODE}
+Backend DB Mode: ${BACKEND_DB_MODE}
+Frontend Port: ${FRONTEND_PORT}
+Backend Port: ${BACKEND_PORT}
+Timestamp: $(date +"%Y-%m-%d %H:%M:%S %Z")
+EOF
+  log "Wrote active mode file: ${ACTIVE_MODE_FILE}"
+}
+
 main() {
   if ! has_cmd docker; then
     echo "[dev-start] ERROR: docker command not found."
@@ -293,6 +306,7 @@ main() {
   backend_env_file="$(ensure_backend_env_file "${BACKEND_DB_MODE}")"
   start_backend_if_needed "${BACKEND_DB_MODE}" "${backend_env_file}"
   start_frontend_if_needed "${FRONTEND_API_MODE}"
+  write_active_mode_file
 
   log "Done. Safe to run this script again (idempotent)."
   log "Active combination: frontend-api=${FRONTEND_API_MODE}, backend-db=${BACKEND_DB_MODE}"

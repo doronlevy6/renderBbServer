@@ -47,6 +47,9 @@ Create prod template once:
 - `Workspace: FE Prod API + BE Prod DB`
   - Frontend points to production backend (`APP_ENV=PROD`)
   - Backend local process runs with `.env.proddb`
+- `Workspace: Show Active Modes`
+  - Prints the currently selected combination from:
+    - `/Users/dwrwnlwy/projects/BB_server/.logs/active-mode.txt`
 
 ## What Startup Script Guarantees
 
@@ -55,6 +58,8 @@ Create prod template once:
 - If mode changed (example: `dev` -> `prod`), it restarts the managed process with the new mode
 - Opens pgAdmin UI:
   - [http://localhost:8080/browser/](http://localhost:8080/browser/)
+- Writes active mode summary file:
+  - `/Users/dwrwnlwy/projects/BB_server/.logs/active-mode.txt`
 
 ## Deploy Button
 
@@ -74,3 +79,9 @@ Runs `BB_flutter/deploy_web.sh`, which:
   - Frontend: `/Users/dwrwnlwy/projects/BB_flutter/.logs/flutter-web-*.log`
 - If a required container does not exist, the script stops with a clear error (it does not recreate containers).
 - Backend default port in this project: `9090`.
+
+## Visual Mode Indicator In App
+
+On Home page app bar you now get:
+- `FE: LOCAL` or `FE: PROD`
+- Hover shows actual API base URL in tooltip.
