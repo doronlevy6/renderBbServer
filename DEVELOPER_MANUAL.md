@@ -72,7 +72,18 @@ Use these when you want to mix:
 - local frontend vs production frontend
 - dev DB vs production DB
 
-## 6. Logout Behavior
+## 6. Stop Everything (One Click)
+
+When you want to stop working:
+- run `Stop Full Dev Environment`
+
+That stops:
+- frontend
+- backend
+- `pgadmin`
+- `bb-db`
+
+## 7. Logout Behavior
 
 Normal `Logout`:
 - clears session data
@@ -84,14 +95,14 @@ Normal `Logout`:
 - cache
 - offline queue
 
-## 7. Deploy Web
+## 8. Deploy Web
 
 To build and publish to GitHub Pages:
 - run `Deploy Web to GitHub Pages`
 
 That build is release mode and hides the local environment badge.
 
-## 8. Refresh Dev DB From Prod
+## 9. Refresh Dev DB From Prod
 
 If you want the dev database to look exactly like production:
 - run `Refresh Dev DB From Prod`
@@ -105,7 +116,7 @@ It will:
 
 Production is not changed.
 
-## 9. Good Defaults
+## 10. Good Defaults
 
 If you are not sure what to do:
 1. Use `Start Full Dev Environment`

@@ -20,6 +20,7 @@ Then run:
 - `Workspace: FE Prod API + BE Prod DB`
 - `Deploy Web to GitHub Pages`
 - `Refresh Dev DB From Prod`
+- `Stop Full Dev Environment`
 
 ## Environment Files (Backend DB Mode)
 
@@ -85,6 +86,17 @@ Before it runs, it asks you to type:
   - [http://localhost:8080/browser/](http://localhost:8080/browser/)
 - Writes active mode summary file:
   - `/Users/dwrwnlwy/projects/BB_server/.logs/active-mode.txt`
+
+## Stop Button
+
+### `Stop Full Dev Environment`
+Stops all local workspace services:
+- frontend web process
+- backend process
+- `pgadmin` container
+- `bb-db` container
+
+The stop task is also idempotent (safe to run more than once).
 
 ## Deploy Button
 
