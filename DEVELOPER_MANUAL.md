@@ -60,7 +60,21 @@ SELECT username, role, team_id
 FROM users;
 ```
 
-## 5. Switch Modes
+## 5. pgAdmin Login Notes
+
+pgAdmin opens to:
+- `http://localhost:8080/browser/`
+
+Login credentials:
+- Email: `admin@admin.com`
+- Password: `admin`
+
+Important:
+- pgAdmin does not support automatic login via URL with username/password.
+- To avoid typing every time, log in once and use `Remember me` in the browser.
+- Full auto-login requires changing pgAdmin server mode and recreating the container.
+
+## 6. Switch Modes
 
 Available tasks:
 - `Workspace: FE Local API + BE Dev DB`
@@ -72,7 +86,7 @@ Use these when you want to mix:
 - local frontend vs production frontend
 - dev DB vs production DB
 
-## 6. Stop Everything (One Click)
+## 7. Stop Everything (One Click)
 
 When you want to stop working:
 - run `Stop Full Dev Environment`
@@ -83,7 +97,7 @@ That stops:
 - `pgadmin`
 - `bb-db`
 
-## 7. Logout Behavior
+## 8. Logout Behavior
 
 Normal `Logout`:
 - clears session data
@@ -95,14 +109,14 @@ Normal `Logout`:
 - cache
 - offline queue
 
-## 8. Deploy Web
+## 9. Deploy Web
 
 To build and publish to GitHub Pages:
 - run `Deploy Web to GitHub Pages`
 
 That build is release mode and hides the local environment badge.
 
-## 9. Refresh Dev DB From Prod
+## 10. Refresh Dev DB From Prod
 
 If you want the dev database to look exactly like production:
 - run `Refresh Dev DB From Prod`
@@ -116,7 +130,7 @@ It will:
 
 Production is not changed.
 
-## 10. Good Defaults
+## 11. Good Defaults
 
 If you are not sure what to do:
 1. Use `Start Full Dev Environment`
