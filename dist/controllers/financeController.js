@@ -125,18 +125,42 @@ router.post('/record-game', verifyToken_1.verifyToken, (req, res) => __awaiter(v
 // ==========================================
 router.post('/add-payment', verifyToken_1.verifyToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const { username, amount, method, notes, date } = req.body;
+    const { username, amount, method, notes, date, client_payment_id } = req.body;
     // @ts-ignore
     const team_id = (_a = req.user) === null || _a === void 0 ? void 0 : _a.team_id;
+    const normalizedClientPaymentId = typeof client_payment_id === 'string' && client_payment_id.trim() !== ''
+        ? client_payment_id.trim()
+        : null;
     if (!team_id) {
         res.status(400).json({ success: false, message: 'Team identification failed' });
         return;
     }
     try {
-        yield userModel_1.default.query(`
+        if (normalizedClientPaymentId) {
+            const existingPayment = yield userModel_1.default.query('SELECT payment_id FROM payments WHERE team_id = $1 AND client_payment_id = $2 LIMIT 1', [team_id, normalizedClientPaymentId]);
+            if (existingPayment.rows.length > 0) {
+                res.status(200).json({
+                    success: true,
+                    message: 'Payment already recorded',
+                    duplicate: true
+                });
+                return;
+            }
+        }
+        const paymentDate = date || new Date();
+        const paymentQuery = normalizedClientPaymentId
+            ? `
+      INSERT INTO payments (username, team_id, amount, method, notes, date, client_payment_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `
+            : `
       INSERT INTO payments (username, team_id, amount, method, notes, date)
       VALUES ($1, $2, $3, $4, $5, $6)
-    `, [username, team_id, amount, method, notes || '', date || new Date()]);
+    `;
+        const paymentValues = normalizedClientPaymentId
+            ? [username, team_id, amount, method, notes || '', paymentDate, normalizedClientPaymentId]
+            : [username, team_id, amount, method, notes || '', paymentDate];
+        yield userModel_1.default.query(paymentQuery, paymentValues);
         // Send payment confirmation email
         try {
             const userRes = yield userModel_1.default.query('SELECT email FROM users WHERE username = $1', [username]);
@@ -151,14 +175,45 @@ router.post('/add-payment', verifyToken_1.verifyToken, (req, res) => __awaiter(v
         res.status(200).json({ success: true, message: 'Payment recorded successfully' });
     }
     catch (error) {
+        if (normalizedClientPaymentId && (error === null || error === void 0 ? void 0 : error.code) === '23505') {
+            try {
+                const duplicatePayment = yield userModel_1.default.query('SELECT payment_id FROM payments WHERE team_id = $1 AND client_payment_id = $2 LIMIT 1', [team_id, normalizedClientPaymentId]);
+                if (duplicatePayment.rows.length > 0) {
+                    res.status(200).json({
+                        success: true,
+                        message: 'Payment already recorded',
+                        duplicate: true
+                    });
+                    return;
+                }
+            }
+            catch (lookupError) {
+                console.error('Error resolving duplicate payment replay:', lookupError);
+            }
+        }
         console.error('Error adding payment:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 }));
 router.delete('/delete-payment/:payment_id', verifyToken_1.verifyToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     const { payment_id } = req.params;
+    // @ts-ignore
+    const team_id = (_a = req.user) === null || _a === void 0 ? void 0 : _a.team_id;
+    if (!team_id) {
+        res.status(400).json({ success: false, message: 'Team identification failed' });
+        return;
+    }
     try {
-        yield userModel_1.default.query('DELETE FROM payments WHERE payment_id = $1', [payment_id]);
+        const deleteResult = yield userModel_1.default.query('DELETE FROM payments WHERE payment_id = $1 AND team_id = $2', [payment_id, team_id]);
+        if (deleteResult.rowCount === 0) {
+            res.status(200).json({
+                success: true,
+                message: 'Payment already deleted',
+                alreadyDeleted: true
+            });
+            return;
+        }
         res.status(200).json({ success: true, message: 'Payment deleted' });
     }
     catch (error) {

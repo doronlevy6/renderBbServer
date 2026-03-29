@@ -131,9 +131,12 @@ router.post('/record-game', verifyToken, async (req: Request, res: Response) => 
 // ==========================================
 
 router.post('/add-payment', verifyToken, async (req: Request, res: Response) => {
-    const { username, amount, method, notes, date } = req.body;
+    const { username, amount, method, notes, date, client_payment_id } = req.body;
     // @ts-ignore
     const team_id = req.user?.team_id;
+    const normalizedClientPaymentId = typeof client_payment_id === 'string' && client_payment_id.trim() !== ''
+        ? client_payment_id.trim()
+        : null;
 
     if (!team_id) {
         res.status(400).json({ success: false, message: 'Team identification failed' });
@@ -141,10 +144,37 @@ router.post('/add-payment', verifyToken, async (req: Request, res: Response) => 
     }
 
     try {
-        await pool.query(`
+        if (normalizedClientPaymentId) {
+            const existingPayment = await pool.query(
+                'SELECT payment_id FROM payments WHERE team_id = $1 AND client_payment_id = $2 LIMIT 1',
+                [team_id, normalizedClientPaymentId]
+            );
+
+            if (existingPayment.rows.length > 0) {
+                res.status(200).json({
+                    success: true,
+                    message: 'Payment already recorded',
+                    duplicate: true
+                });
+                return;
+            }
+        }
+
+        const paymentDate = date || new Date();
+        const paymentQuery = normalizedClientPaymentId
+            ? `
+      INSERT INTO payments (username, team_id, amount, method, notes, date, client_payment_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `
+            : `
       INSERT INTO payments (username, team_id, amount, method, notes, date)
       VALUES ($1, $2, $3, $4, $5, $6)
-    `, [username, team_id, amount, method, notes || '', date || new Date()]);
+    `;
+        const paymentValues = normalizedClientPaymentId
+            ? [username, team_id, amount, method, notes || '', paymentDate, normalizedClientPaymentId]
+            : [username, team_id, amount, method, notes || '', paymentDate];
+
+        await pool.query(paymentQuery, paymentValues);
 
         // Send payment confirmation email
         try {
@@ -165,6 +195,26 @@ router.post('/add-payment', verifyToken, async (req: Request, res: Response) => 
 
         res.status(200).json({ success: true, message: 'Payment recorded successfully' });
     } catch (error: any) {
+        if (normalizedClientPaymentId && error?.code === '23505') {
+            try {
+                const duplicatePayment = await pool.query(
+                    'SELECT payment_id FROM payments WHERE team_id = $1 AND client_payment_id = $2 LIMIT 1',
+                    [team_id, normalizedClientPaymentId]
+                );
+
+                if (duplicatePayment.rows.length > 0) {
+                    res.status(200).json({
+                        success: true,
+                        message: 'Payment already recorded',
+                        duplicate: true
+                    });
+                    return;
+                }
+            } catch (lookupError) {
+                console.error('Error resolving duplicate payment replay:', lookupError);
+            }
+        }
+
         console.error('Error adding payment:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
@@ -172,8 +222,29 @@ router.post('/add-payment', verifyToken, async (req: Request, res: Response) => 
 
 router.delete('/delete-payment/:payment_id', verifyToken, async (req: Request, res: Response) => {
     const { payment_id } = req.params;
+    // @ts-ignore
+    const team_id = req.user?.team_id;
+
+    if (!team_id) {
+        res.status(400).json({ success: false, message: 'Team identification failed' });
+        return;
+    }
+
     try {
-        await pool.query('DELETE FROM payments WHERE payment_id = $1', [payment_id]);
+        const deleteResult = await pool.query(
+            'DELETE FROM payments WHERE payment_id = $1 AND team_id = $2',
+            [payment_id, team_id]
+        );
+
+        if (deleteResult.rowCount === 0) {
+            res.status(200).json({
+                success: true,
+                message: 'Payment already deleted',
+                alreadyDeleted: true
+            });
+            return;
+        }
+
         res.status(200).json({ success: true, message: 'Payment deleted' });
     } catch (error: any) {
         console.error('Error deleting payment:', error);

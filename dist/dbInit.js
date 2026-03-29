@@ -126,6 +126,7 @@ const createTables = () => __awaiter(void 0, void 0, void 0, function* () {
           amount INTEGER NOT NULL,
           method VARCHAR(50) NOT NULL,          -- 'bit', 'cash', 'paybox', 'other'
           date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          client_payment_id VARCHAR(255),
           notes TEXT,
           FOREIGN KEY (username) REFERENCES users(username),
           FOREIGN KEY (team_id) REFERENCES teams(team_id)
@@ -138,6 +139,12 @@ const createTables = () => __awaiter(void 0, void 0, void 0, function* () {
             yield userModel_1.default.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_game_cost INTEGER;`);
             yield userModel_1.default.query(`ALTER TABLE game_attendance ADD COLUMN IF NOT EXISTS adjustment_note TEXT;`);
             yield userModel_1.default.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS game_session_id VARCHAR(255) UNIQUE;`);
+            yield userModel_1.default.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS client_payment_id VARCHAR(255);`);
+            yield userModel_1.default.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS payments_team_client_payment_id_uq
+        ON payments (team_id, client_payment_id)
+        WHERE client_payment_id IS NOT NULL;
+      `);
         }
         catch (e) {
             // Ignoring error if columns exist or other migration issues
