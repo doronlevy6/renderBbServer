@@ -67,6 +67,20 @@
 1. הרץ `Workspace: Show Active Modes`
 2. ודא שהמצב הוא מה שהתכוונת
 
+## 3.1 הרמה נפרדת של פרונט או בק
+
+אם רק צד אחד נסגר, לא צריך להוריד את כל הסביבה.
+
+כפתורים זמינים:
+- `Start Frontend Only (Local API)`
+- `Start Frontend Only (Prod API)`
+- `Start Backend Only (Dev DB)`
+- `Start Backend Only (Prod DB)`
+
+הערה:
+- הכפתורים האלה לא אמורים ליצור כפילויות.
+- אם אותו תהליך כבר רץ, הם ידלגו על פתיחה נוספת.
+
 ## 4. עצירה מלאה (בלחיצה)
 
 כדי לעצור הכל:

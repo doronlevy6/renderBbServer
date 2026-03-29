@@ -281,6 +281,66 @@
       "problemMatcher": []
     },
     {
+      "label": "Start Frontend Only (Local API)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Local API + BE Dev DB",
+        "_Frontend: Local API"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Frontend Only (Prod API)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Prod API + BE Dev DB",
+        "_Frontend: Prod API"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Backend Only (Dev DB)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Local API + BE Dev DB",
+        "_Backend: Dev DB"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Backend Only (Prod DB)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Local API + BE Prod DB",
+        "_Backend: Prod DB"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Open pgAdmin UI",
       "type": "shell",
       "command": "OPEN_PGADMIN_UI=1 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",

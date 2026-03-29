@@ -9,6 +9,24 @@ META_FILE="${4:?meta file is required}"
 PID_FILE="${5:?pid file is required}"
 SERVER_DIR="${6:?server dir is required}"
 
+is_port_listening() {
+  lsof -nP -iTCP:"${PORT}" -sTCP:LISTEN >/dev/null 2>&1
+}
+
+pid_is_alive() {
+  if [[ ! -f "${PID_FILE}" ]]; then
+    return 1
+  fi
+  local pid
+  pid="$(cat "${PID_FILE}" 2>/dev/null || true)"
+  [[ -n "${pid}" ]] && kill -0 "${pid}" >/dev/null 2>&1
+}
+
+if pid_is_alive || is_port_listening; then
+  echo "Backend already running on port ${PORT}. Skipping duplicate start."
+  exit 0
+fi
+
 mkdir -p "$(dirname "${META_FILE}")"
 
 cat > "${META_FILE}" <<EOF
