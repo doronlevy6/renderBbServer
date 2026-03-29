@@ -45,6 +45,12 @@ The startup task also writes mode snapshot code files:
 - `/Users/dwrwnlwy/projects/BB_server/src/generated/runtimeMode.ts`
 - `/Users/dwrwnlwy/projects/BB_flutter/lib/generated/runtime_mode.g.dart`
 
+Important:
+- In some source files you still see `PROD` as fallback text.
+- That does not mean you are running on prod.
+- The real environment comes from the task runtime values (`APP_ENV`, `ENV_FILE`).
+- To know the truth, always check `Workspace: Show Active Modes`.
+
 ## 4. Login
 
 There is no separate admin login screen.
@@ -119,9 +125,27 @@ Normal `Logout`:
 To build and publish to GitHub Pages:
 - run `Deploy Web to GitHub Pages`
 
-That build is release mode and hides the local environment badge.
+That build is always:
+- release mode
+- `APP_ENV=PROD`
+- `DEPLOY_TARGET=github_pages`
 
-## 10. Refresh Dev DB From Prod
+So GitHub Pages always works against the production server.
+
+## 10. Deploy Server
+
+To push the server branch to GitHub:
+- run `Deploy Server Branch to Origin`
+
+That task:
+- runs `npm run build`
+- pushes the current branch to `origin`
+
+Important:
+- The production database for the hosted server is not taken from your local `.env.devdb` or `.env.proddb`
+- It is taken from the environment variables configured on the hosted server
+
+## 11. Refresh Dev DB From Prod
 
 If you want the dev database to look exactly like production:
 - run `Refresh Dev DB From Prod`
@@ -135,7 +159,7 @@ It will:
 
 Production is not changed.
 
-## 11. Good Defaults
+## 12. Good Defaults
 
 If you are not sure what to do:
 1. Use `Start Full Dev Environment`

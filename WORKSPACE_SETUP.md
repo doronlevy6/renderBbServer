@@ -19,6 +19,7 @@ Then run:
 - `Workspace: FE Prod API + BE Dev DB`
 - `Workspace: FE Prod API + BE Prod DB`
 - `Deploy Web to GitHub Pages`
+- `Deploy Server Branch to Origin`
 - `Refresh Dev DB From Prod`
 - `Stop Full Dev Environment`
 
@@ -62,6 +63,11 @@ Create prod template once:
 Workspace startup tasks also update generated code snapshot files:
 - `/Users/dwrwnlwy/projects/BB_server/src/generated/runtimeMode.ts`
 - `/Users/dwrwnlwy/projects/BB_flutter/lib/generated/runtime_mode.g.dart`
+
+Important:
+- Source files may still contain fallback text like `PROD`
+- The active environment is determined by the task runtime values
+- Use `Workspace: Show Active Modes` as the source of truth
 
 ## Refresh Dev DB From Prod
 
@@ -109,9 +115,16 @@ The stop task is also idempotent (safe to run more than once).
 ### `Deploy Web to GitHub Pages`
 Runs `BB_flutter/deploy_web.sh`, which:
 - Builds Flutter web
+- Forces `APP_ENV=PROD`
 - Syncs build output into `BB_web`
 - Commits changes in `BB_web`
 - Pushes to GitHub Pages branch
+
+### `Deploy Server Branch to Origin`
+Runs `BB_server/scripts/deploy_server.sh`, which:
+- Runs `npm run build`
+- Pushes the current branch to `origin`
+- Does not use your local `.env.devdb` or `.env.proddb` for hosted production
 
 ## Notes
 
