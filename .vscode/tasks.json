@@ -299,7 +299,7 @@
     {
       "label": "Workspace: Show Active Modes",
       "type": "shell",
-      "command": "if [ -f ./.logs/active-mode.txt ]; then cat ./.logs/active-mode.txt; else echo \"No active mode file yet. Run a Workspace task first.\"; fi",
+      "command": "bash ./scripts/show_active_modes.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },

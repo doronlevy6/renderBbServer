@@ -72,10 +72,10 @@
 1. `Run Task...` -> `Workspace: Show Active Modes`
 
 תראה שם:
-- `Frontend API Mode`
-- `Backend DB Mode`
-- `Frontend APP_ENV`
-- `Backend ENV_FILE`
+- `Status` (מצב חי אמיתי כרגע: `running` / `infra_only` / `app_only` / `stopped` / `mixed`)
+- `Frontend Runtime` / `Backend Runtime`
+- `DB Container` / `pgAdmin Container`
+- `Configured ...` (הקונפיג האחרון שהוגדר להרצה)
 
 אפשר לראות גם כאן:
 - `/Users/dwrwnlwy/projects/BB_server/.logs/active-mode.txt`
@@ -87,6 +87,8 @@
 - בקבצי קוד יש לפעמים `PROD` בתור fallback.
 - זה לא אומר שכרגע אתה על `PROD`.
 - הערך בפועל נקבע מה־Task בזמן הרצה (`APP_ENV`, `ENV_FILE`).
+- `Status` מייצג מה רץ כרגע בפועל.
+- `Configured ...` מייצג מה הוגדר בפעם האחרונה (לא בהכרח רץ כרגע).
 
 ## 5. החלפת סביבות (בלחיצה)
 
