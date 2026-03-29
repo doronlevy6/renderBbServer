@@ -1,168 +1,151 @@
-# Developer Manual
+# מדריך תפעול יחיד (BB Workspace)
 
-This is the simple way to work on the BB workspace:
+זה המסמך היחיד שצריך לתפעול היומי של:
+- `BB_server`
+- `BB_flutter`
+- `BB_web`
 
-## 1. Open The Workspace
+## 1. פתיחה והתחלה
 
-Open:
+1. פתח ב־VS Code:
 - `/Users/dwrwnlwy/projects/BB_server/BB_ALL.code-workspace`
-
-## 2. Start The Right Environment
-
-In VS Code:
+2. לחץ:
 - `Terminal` -> `Run Task...`
-
-Recommended default:
+3. בחר:
 - `Start Full Dev Environment`
 
-That starts:
+ברירת המחדל שעולה:
+- Frontend: `LOCAL`
+- Backend DB: `dev` (`.env.devdb`)
+
+מה נפתח:
 - Docker Desktop
 - `bb-db`
 - `pgadmin`
 - backend
 - frontend
 
-Default mode:
-- Frontend: local API
-- Backend: dev DB
+## 2. איך מזהים באיזה סביבה אתה עובד עכשיו
 
-## 3. See What You Are Running
+מקור האמת הוא:
+1. `Run Task...` -> `Workspace: Show Active Modes`
 
-To identify the current environment in one click:
-1. In VS Code open `Terminal` -> `Run Task...`
-2. Click `Workspace: Show Active Modes`
+תראה שם:
+- `Frontend API Mode`
+- `Backend DB Mode`
+- `Frontend APP_ENV`
+- `Backend ENV_FILE`
 
-This prints the current combination:
-- Frontend API mode
-- Backend DB mode
-- Frontend APP_ENV
-- Backend ENV file
-
-You can also see it here:
-- Inside the app Home page: `FE: LOCAL` or `FE: PROD`
+אפשר לראות גם כאן:
 - `/Users/dwrwnlwy/projects/BB_server/.logs/active-mode.txt`
-The startup task also writes mode snapshot code files:
 - `/Users/dwrwnlwy/projects/BB_server/src/generated/runtimeMode.ts`
 - `/Users/dwrwnlwy/projects/BB_flutter/lib/generated/runtime_mode.g.dart`
+- באפליקציה במסך הבית: `FE: LOCAL` או `FE: PROD`
 
-Important:
-- In some source files you still see `PROD` as fallback text.
-- That does not mean you are running on prod.
-- The real environment comes from the task runtime values (`APP_ENV`, `ENV_FILE`).
-- To know the truth, always check `Workspace: Show Active Modes`.
+חשוב:
+- בקבצי קוד יש לפעמים `PROD` בתור fallback.
+- זה לא אומר שכרגע אתה על `PROD`.
+- הערך בפועל נקבע מה־Task בזמן הרצה (`APP_ENV`, `ENV_FILE`).
 
-## 4. Login
+## 3. החלפת סביבות (בלחיצה)
 
-There is no separate admin login screen.
-
-You just log in with a normal username/password.
-
-If that user has `role = admin` in the database, the app shows admin pages.
-
-If you do not know which user is admin:
-- Open pgAdmin
-- Check table `users`
-- Look at the `role` column
-
-Useful query:
-
-```sql
-SELECT username, role, team_id
-FROM users;
-```
-
-## 5. pgAdmin Login Notes
-
-pgAdmin opens to:
-- `http://localhost:8080/browser/`
-
-Login credentials:
-- Email: `admin@admin.com`
-- Password: `admin`
-
-Important:
-- pgAdmin does not support automatic login via URL with username/password.
-- To avoid typing every time, log in once and use `Remember me` in the browser.
-- Full auto-login requires changing pgAdmin server mode and recreating the container.
-
-## 6. Switch Modes
-
-Available tasks:
+משימות זמינות:
 - `Workspace: FE Local API + BE Dev DB`
 - `Workspace: FE Local API + BE Prod DB`
 - `Workspace: FE Prod API + BE Dev DB`
 - `Workspace: FE Prod API + BE Prod DB`
 
-Use these when you want to mix:
-- local frontend vs production frontend
-- dev DB vs production DB
+לאחר כל החלפה:
+1. הרץ `Workspace: Show Active Modes`
+2. ודא שהמצב הוא מה שהתכוונת
 
-## 7. Stop Everything (One Click)
+## 4. עצירה מלאה (בלחיצה)
 
-When you want to stop working:
-- run `Stop Full Dev Environment`
+כדי לעצור הכל:
+- `Run Task...` -> `Stop Full Dev Environment`
 
-That stops:
+זה עוצר:
 - frontend
 - backend
 - `pgadmin`
 - `bb-db`
 
-## 8. Logout Behavior
+## 5. pgAdmin והתחברות אדמין
 
-Normal `Logout`:
-- clears session data
-- keeps local cache only if needed for workflow
+כתובת:
+- `http://localhost:8080/browser/`
 
-`Reset Local Data (Debug)`:
-- clears everything local
-- token
-- cache
-- offline queue
+פרטי כניסה:
+- Email: `admin@admin.com`
+- Password: `admin`
 
-## 9. Deploy Web
+הערה:
+- אי אפשר auto-login דרך URL ב־pgAdmin.
+- אפשר `Remember me` בדפדפן.
 
-To build and publish to GitHub Pages:
-- run `Deploy Web to GitHub Pages`
+כניסה כאדמין באפליקציה:
+- אין מסך אדמין נפרד.
+- נכנסים עם משתמש רגיל.
+- אם בטבלת `users` ה־`role` שלו הוא `admin`, תקבל מסכי אדמין.
 
-That build is always:
-- release mode
+## 6. סנכרון DB של dev שיהיה כמו prod
+
+כדי להעתיק את פרודקשן ל־dev:
+- `Run Task...` -> `Refresh Dev DB From Prod`
+- הקלד `REFRESH` לאישור
+
+מה זה עושה:
+- dump ל־prod
+- מחיקה ובנייה מחדש של DB מקומי
+- restore מלא ל־dev
+
+מה זה לא עושה:
+- לא משנה את production DB
+
+## 7. Deploy לפרונט (GitHub Pages)
+
+משימה:
+- `Deploy Web to GitHub Pages`
+
+התנהגות קבועה:
+- build ב־`release`
 - `APP_ENV=PROD`
 - `DEPLOY_TARGET=github_pages`
 
-So GitHub Pages always works against the production server.
+משמעות:
+- האתר ב־GitHub Pages תמיד עובד מול שרת הפרודקשן.
 
-## 10. Deploy Server
+## 8. Deploy לשרת (קוד)
 
-To push the server branch to GitHub:
-- run `Deploy Server Branch to Origin`
+משימה:
+- `Deploy Server Branch to Origin`
 
-That task:
-- runs `npm run build`
-- pushes the current branch to `origin`
+מה היא עושה:
+- `npm run build`
+- דחיפה של הענף הנוכחי ל־`origin`
 
-Important:
-- The production database for the hosted server is not taken from your local `.env.devdb` or `.env.proddb`
-- It is taken from the environment variables configured on the hosted server
+חשוב:
+- ה־DB של הפרודקשן המארח לא נקבע מ־`.env.devdb`/`.env.proddb` המקומיים.
+- הוא נקבע מה־Environment Variables שמוגדרים בשרת המארח (Render).
 
-## 11. Refresh Dev DB From Prod
+## 9. מדיניות ענפים לפרודקשן (כיום)
 
-If you want the dev database to look exactly like production:
-- run `Refresh Dev DB From Prod`
+נכון להיום:
+- ענף הפרודקשן הוא `main`.
+- `main` הוחלף לתוכן של `financial2` (ללא merge).
+- נוצר ענף גיבוי:
+- `backup/main-before-replace-2026-03-29`
 
-It will:
-- dump production
-- drop the local dev database
-- recreate it
-- restore the production dump into dev
-- disconnect any local backend sessions that were connected to dev
+כלומר:
+- `main` ו־`financial2` מסונכרנים כרגע.
+- יש נקודת חזרה אם צריך.
 
-Production is not changed.
+## 10. סדר עבודה מומלץ קצר
 
-## 12. Good Defaults
-
-If you are not sure what to do:
-1. Use `Start Full Dev Environment`
-2. Login with your normal user
-3. Use pgAdmin only if you need to inspect `users` or roles
-4. Use `Reset Local Data (Debug)` only when you want a clean local state
+1. `Start Full Dev Environment`
+2. `Workspace: Show Active Modes`
+3. עבודה רגילה
+4. אם צריך, החלפת סביבה עם אחד מ־`Workspace: FE ...`
+5. לפני deploy: בדיקת מצב שוב עם `Show Active Modes`
+6. Deploy פרונט/שרת לפי הצורך
+7. `Stop Full Dev Environment`
