@@ -5,7 +5,7 @@
       "label": "Start Full Dev Environment",
       "dependsOrder": "sequence",
       "dependsOn": [
-        "_Prepare: FE Local API + BE Dev DB",
+        "Start Infra Only (Docker + DB + pgAdmin)",
         "_Backend: Dev DB",
         "_Frontend: Local API"
       ],
@@ -13,6 +13,37 @@
         "kind": "build",
         "isDefault": true
       },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Infra Only (Docker + DB + pgAdmin)",
+      "type": "shell",
+      "command": "OPEN_PGADMIN_UI=1 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start App Only (FE Local API + BE Dev DB)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Local API + BE Dev DB",
+        "_Backend: Dev DB",
+        "_Frontend: Local API"
+      ],
       "presentation": {
         "echo": true,
         "reveal": "always",
@@ -88,7 +119,7 @@
     {
       "label": "_Prepare: FE Local API + BE Dev DB",
       "type": "shell",
-      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -104,7 +135,7 @@
     {
       "label": "_Prepare: FE Local API + BE Prod DB",
       "type": "shell",
-      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=prod START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=prod START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -120,7 +151,7 @@
     {
       "label": "_Prepare: FE Prod API + BE Dev DB",
       "type": "shell",
-      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=dev START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=dev START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -136,7 +167,7 @@
     {
       "label": "_Prepare: FE Prod API + BE Prod DB",
       "type": "shell",
-      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=prod START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=prod START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -344,6 +375,36 @@
       "label": "Open pgAdmin UI",
       "type": "shell",
       "command": "OPEN_PGADMIN_UI=1 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop App Only (FE + BE)",
+      "type": "shell",
+      "command": "STOP_INFRA_CONTAINERS=0 ./scripts/stop_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop Infra Only (DB + pgAdmin)",
+      "type": "shell",
+      "command": "STOP_APP_PROCESSES=0 ./scripts/stop_full_dev_environment.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },

@@ -12,6 +12,7 @@ PGADMIN_CONTAINER="${PGADMIN_CONTAINER:-pgadmin}"
 PGADMIN_URL="${PGADMIN_URL:-http://localhost:8080/browser/}"
 OPEN_PGADMIN_UI="${OPEN_PGADMIN_UI:-0}"
 START_APP_PROCESSES="${START_APP_PROCESSES:-0}"
+START_PGADMIN_CONTAINER="${START_PGADMIN_CONTAINER:-1}"
 BACKEND_PORT="${BACKEND_PORT:-9090}"
 FRONTEND_PORT="${FRONTEND_PORT:-7357}"
 
@@ -426,8 +427,12 @@ main() {
   else
     log "Skipping local DB container start (backend db-mode=prod)."
   fi
-  ensure_container_running "${PGADMIN_CONTAINER}"
-  open_pgadmin_ui
+  if [[ "${START_PGADMIN_CONTAINER}" == "1" ]]; then
+    ensure_container_running "${PGADMIN_CONTAINER}"
+    open_pgadmin_ui
+  else
+    log "Skipping pgAdmin container/UI because START_PGADMIN_CONTAINER=${START_PGADMIN_CONTAINER}."
+  fi
   local backend_env_file
   backend_env_file="$(ensure_backend_env_file "${BACKEND_DB_MODE}")"
   write_active_mode_file "${backend_env_file}"

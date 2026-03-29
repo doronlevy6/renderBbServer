@@ -5,7 +5,24 @@
 - `BB_flutter`
 - `BB_web`
 
-## 1. פתיחה והתחלה
+## 1. מבנה הכפתורים
+
+מעכשיו יש 3 סוגי כפתורים:
+
+1. `Infra`
+- Docker
+- DB (`bb-db`)
+- `pgadmin`
+- פתיחת `pgAdmin UI`
+
+2. `App`
+- backend
+- frontend
+
+3. `Full`
+- גם `Infra` וגם `App`
+
+## 2. פתיחה והתחלה
 
 1. פתח ב־VS Code:
 - `/Users/dwrwnlwy/projects/BB_server/BB_ALL.code-workspace`
@@ -27,13 +44,29 @@
 - טרמינל גלוי ל־frontend בתוך VS Code
 
 הערה:
-- `pgAdmin` לא נפתח יותר אוטומטית בדפדפן.
-- אם אתה צריך אותו, לחץ `Run Task...` -> `Open pgAdmin UI`
 - ה־backend וה־frontend לא רצים "מאחורי הקלעים".
 - כל אחד נפתח בטרמינל של VS Code עצמו, עם לוגים חיים כאילו הרצת ידנית.
 - כך הכול נשאר בתוך העורך ולא בחלונות חיצוניים.
 
-## 2. איך מזהים באיזה סביבה אתה עובד עכשיו
+## 3. כפתורים עיקריים
+
+כפתורי עבודה יומיומיים:
+- `Start Infra Only (Docker + DB + pgAdmin)`
+- `Stop Infra Only (DB + pgAdmin)`
+- `Start App Only (FE Local API + BE Dev DB)`
+- `Stop App Only (FE + BE)`
+- `Start Full Dev Environment`
+- `Stop Full Dev Environment`
+
+מתי משתמשים במה:
+- אם אתה רק רוצה DB ו־pgAdmin: `Start Infra Only`
+- אם ה־DB כבר למעלה ורק הפרונט/בק נפלו: `Start App Only`
+- אם אתה רוצה הכול בלחיצה אחת: `Start Full Dev Environment`
+- אם אתה רוצה לעצור רק את האפליקציה: `Stop App Only`
+- אם אתה רוצה לעצור רק את התשתית: `Stop Infra Only`
+- אם אתה רוצה לכבות הכול: `Stop Full Dev Environment`
+
+## 4. איך מזהים באיזה סביבה אתה עובד עכשיו
 
 מקור האמת הוא:
 1. `Run Task...` -> `Workspace: Show Active Modes`
@@ -55,7 +88,7 @@
 - זה לא אומר שכרגע אתה על `PROD`.
 - הערך בפועל נקבע מה־Task בזמן הרצה (`APP_ENV`, `ENV_FILE`).
 
-## 3. החלפת סביבות (בלחיצה)
+## 5. החלפת סביבות (בלחיצה)
 
 משימות זמינות:
 - `Workspace: FE Local API + BE Dev DB`
@@ -67,7 +100,7 @@
 1. הרץ `Workspace: Show Active Modes`
 2. ודא שהמצב הוא מה שהתכוונת
 
-## 3.1 הרמה נפרדת של פרונט או בק
+## 6. הרמה נפרדת של פרונט או בק
 
 אם רק צד אחד נסגר, לא צריך להוריד את כל הסביבה.
 
@@ -81,7 +114,7 @@
 - הכפתורים האלה לא אמורים ליצור כפילויות.
 - אם אותו תהליך כבר רץ, הם ידלגו על פתיחה נוספת.
 
-## 4. עצירה מלאה (בלחיצה)
+## 7. עצירה מלאה או חלקית
 
 כדי לעצור הכל:
 - `Run Task...` -> `Stop Full Dev Environment`
@@ -96,7 +129,13 @@
 - הטרמינלים הגלויים עצמם יכולים להישאר פתוחים כטאבים, אבל התהליכים בתוכם ייעצרו.
 - אם תרצה, אפשר פשוט לסגור גם את הטאבים אחרי העצירה.
 
-## 5. pgAdmin והתחברות אדמין
+כדי לעצור רק את האפליקציה:
+- `Run Task...` -> `Stop App Only (FE + BE)`
+
+כדי לעצור רק את התשתית:
+- `Run Task...` -> `Stop Infra Only (DB + pgAdmin)`
+
+## 8. pgAdmin והתחברות אדמין
 
 כתובת:
 - `http://localhost:8080/browser/`
@@ -114,7 +153,7 @@
 - נכנסים עם משתמש רגיל.
 - אם בטבלת `users` ה־`role` שלו הוא `admin`, תקבל מסכי אדמין.
 
-## 6. סנכרון DB של dev שיהיה כמו prod
+## 9. סנכרון DB של dev שיהיה כמו prod
 
 כדי להעתיק את פרודקשן ל־dev:
 - `Run Task...` -> `Refresh Dev DB From Prod`
@@ -128,7 +167,7 @@
 מה זה לא עושה:
 - לא משנה את production DB
 
-## 7. Deploy לפרונט (GitHub Pages)
+## 10. Deploy לפרונט (GitHub Pages)
 
 משימה:
 - `Deploy Web to GitHub Pages`
@@ -141,7 +180,7 @@
 משמעות:
 - האתר ב־GitHub Pages תמיד עובד מול שרת הפרודקשן.
 
-## 8. Deploy לשרת (קוד)
+## 11. Deploy לשרת (קוד)
 
 משימה חד־פעמית לניקוי היסטוריה ישנה:
 - `One-Time: Replace Production main with Current Branch`
@@ -166,7 +205,7 @@
 - ה־DB של הפרודקשן המארח לא נקבע מ־`.env.devdb`/`.env.proddb` המקומיים.
 - הוא נקבע מה־Environment Variables שמוגדרים בשרת המארח (Render).
 
-## 9. מדיניות ענפים לפרודקשן (כיום)
+## 12. מדיניות ענפים לפרודקשן (כיום)
 
 נכון להיום:
 - ענף הפרודקשן הוא `main`.
@@ -174,14 +213,14 @@
 - אחרי שתבדוק אותו, נריץ פעם אחת את משימת ה־replace.
 - אחר כך נעבוד רק עם משימת ה־merge הרגילה.
 
-## 10. סדר עבודה מומלץ קצר
+## 13. סדר עבודה מומלץ קצר
 
-1. `Start Full Dev Environment`
+1. `Start Infra Only (Docker + DB + pgAdmin)` או `Start Full Dev Environment`
 2. `Workspace: Show Active Modes`
 3. עבודה רגילה
-4. אם צריך, החלפת סביבה עם אחד מ־`Workspace: FE ...`
+4. אם צריך, `Start App Only (FE Local API + BE Dev DB)` או אחד מ־`Workspace: FE ...`
 5. לפני deploy: בדיקת מצב שוב עם `Show Active Modes`
 6. בפעם הראשונה: `One-Time: Replace Production main with Current Branch`
 7. אחרי זה: `Merge Current Server Branch into main and Start New Branch`
 8. `Deploy Web to GitHub Pages` לפי הצורך
-9. `Stop Full Dev Environment`
+9. `Stop App Only (FE + BE)` או `Stop Full Dev Environment`
