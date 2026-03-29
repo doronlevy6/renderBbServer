@@ -85,6 +85,21 @@ stop_listening_process_if_matches() {
   fi
 }
 
+stop_matching_processes() {
+  local label="$1"
+  local regex="$2"
+  local pids
+  pids="$(pgrep -f "${regex}" || true)"
+  if [[ -z "${pids}" ]]; then
+    return 0
+  fi
+
+  while IFS= read -r pid; do
+    [[ -z "${pid}" ]] && continue
+    kill_pid_if_alive "${pid}" "${label}"
+  done <<< "${pids}"
+}
+
 stop_container_if_running() {
   local name="$1"
   if ! docker container inspect "${name}" >/dev/null 2>&1; then
@@ -177,12 +192,14 @@ main() {
   stop_from_pid_file "${LOG_DIR_SERVER}/backend-dev.pid" "backend-dev"
   stop_from_pid_file "${LOG_DIR_SERVER}/backend-prod.pid" "backend-prod"
   stop_listening_process_if_matches "${BACKEND_PORT}" "backend" "(node|ts-node|tsx|npm)"
+  stop_matching_processes "backend-orphan" "${SERVER_DIR}/node_modules/.bin/ts-node-dev.*src/server.ts"
   rm -f "${BACKEND_META_FILE}"
 
   kill_pid_if_alive "$(read_meta_value "${FRONTEND_META_FILE}" "PID")" "frontend"
   stop_from_pid_file "${LOG_DIR_FLUTTER}/flutter-web-local.pid" "flutter-web-local"
   stop_from_pid_file "${LOG_DIR_FLUTTER}/flutter-web-prod.pid" "flutter-web-prod"
   stop_listening_process_if_matches "${FRONTEND_PORT}" "frontend" "(flutter|dart)"
+  stop_matching_processes "frontend-orphan" "flutter run -d chrome --web-port ${FRONTEND_PORT}"
   rm -f "${FRONTEND_META_FILE}"
 
   if has_cmd docker && docker info >/dev/null 2>&1; then
