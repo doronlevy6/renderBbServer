@@ -167,6 +167,33 @@
 מה זה לא עושה:
 - לא משנה את production DB
 
+### 9.1 איך לראות את הנתונים ב־pgAdmin אחרי סנכרון (קליק־אחרי־קליק)
+
+לפעמים אחרי סנכרון צריך רענון/חיבור מחדש ב־pgAdmin כי ה־DB המקומי נבנה מחדש.
+
+1. ב־VS Code לחץ `Run Task...` ואז `Start Infra Only (Docker + DB + pgAdmin)`.
+2. בדפדפן פתח `http://localhost:8080/browser/` והתחבר.
+3. בצד שמאל ב־pgAdmin פתח `Servers`.
+4. קליק ימני על השרת שלך ואז `Disconnect Server`.
+5. שוב קליק ימני על אותו שרת ואז `Connect Server`.
+6. פתח `Databases`.
+7. לחץ על `bb-db` (לא על `postgres`).
+8. פתח `Schemas` ואז `public` ואז `Tables`.
+9. קליק ימני על `Tables` ואז `Refresh`.
+10. כדי לראות נתונים בטבלה: קליק ימני על `users` ואז `View/Edit Data` ואז `All Rows`.
+
+בדיקת אימות מהירה (מומלץ):
+1. קליק ימני על `bb-db` ואז `Query Tool`.
+2. הרץ:
+```sql
+SELECT current_database();
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
+ORDER BY table_name;
+```
+3. ודא ש־`current_database()` מחזיר `bb-db`.
+
 ## 10. Deploy לפרונט (GitHub Pages)
 
 משימה:
