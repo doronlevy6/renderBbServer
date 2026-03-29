@@ -117,14 +117,24 @@
 
 ## 8. Deploy לשרת (קוד)
 
-משימה:
-- `Deploy Server to Production (main)`
+משימה חד־פעמית לניקוי היסטוריה ישנה:
+- `One-Time: Replace Production main with Current Branch`
 
 מה היא עושה:
 - `npm run build`
 - יצירת גיבוי ל־`main` הנוכחי
 - החלפת `main` בתוכן של הענף הנוכחי
 - דחיפה ל־`origin/main`
+
+משימת העבודה הרגילה אחרי שננקה פעם אחת את `main`:
+- `Merge Current Server Branch into main and Start New Branch`
+
+מה היא עושה:
+- `npm run build`
+- יצירת גיבוי ל־`main` הנוכחי
+- merge של הענף הנוכחי לתוך `main`
+- דחיפה ל־`origin/main`
+- יצירת ענף עבודה חדש אוטומטית מתוך `main`
 
 חשוב:
 - ה־DB של הפרודקשן המארח לא נקבע מ־`.env.devdb`/`.env.proddb` המקומיים.
@@ -134,13 +144,9 @@
 
 נכון להיום:
 - ענף הפרודקשן הוא `main`.
-- `main` הוחלף לתוכן של `financial2` (ללא merge).
-- נוצר ענף גיבוי:
-- `backup/main-before-replace-2026-03-29`
-
-כלומר:
-- `main` ו־`financial2` מסונכרנים כרגע.
-- יש נקודת חזרה אם צריך.
+- כרגע הענף המעודכן לעבודה הוא `setup-ops`.
+- אחרי שתבדוק אותו, נריץ פעם אחת את משימת ה־replace.
+- אחר כך נעבוד רק עם משימת ה־merge הרגילה.
 
 ## 10. סדר עבודה מומלץ קצר
 
@@ -149,5 +155,7 @@
 3. עבודה רגילה
 4. אם צריך, החלפת סביבה עם אחד מ־`Workspace: FE ...`
 5. לפני deploy: בדיקת מצב שוב עם `Show Active Modes`
-6. `Deploy Web to GitHub Pages` או `Deploy Server to Production (main)` לפי הצורך
-7. `Stop Full Dev Environment`
+6. בפעם הראשונה: `One-Time: Replace Production main with Current Branch`
+7. אחרי זה: `Merge Current Server Branch into main and Start New Branch`
+8. `Deploy Web to GitHub Pages` לפי הצורך
+9. `Stop Full Dev Environment`
