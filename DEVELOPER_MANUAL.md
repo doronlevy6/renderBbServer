@@ -275,6 +275,10 @@ ORDER BY t;
 - `Advanced: One-Time Force Replace Production main`
 - מיועדת למצב חד־פעמי בלבד שבו מחליפים את `main` בכוח.
 
+משימה חד־פעמית מומלצת רק בפעם הראשונה שבה מכניסים את נעילת הפרוד ל־`main`:
+- `One-Time: Promote Prod DB Lock to main`
+- זו אותה זרימת deploy רגילה, אבל עם הרשאה חד־פעמית לעדכן את `.env.production.lock`.
+
 חשוב:
 - ניתוב ה־DB של פרודקשן מקובע בריפו בקובץ: `.env.production.lock`.
 - בלוקאל עובדים עם `.env.devdb`/`.env.proddb`, אבל הדחיפה לפרוד מוגנת כדי לא לשנות את נעילת הפרוד בטעות.
@@ -286,7 +290,7 @@ ORDER BY t;
 נכון להיום:
 - ענף הפרודקשן הוא `main`.
 - כרגע הענף המעודכן לעבודה הוא `setup-ops`.
-- אחרי שתבדוק אותו, נריץ פעם אחת את משימת ה־replace.
+- אחרי שתבדוק אותו, נריץ פעם אחת את `One-Time: Promote Prod DB Lock to main`.
 - אחר כך נעבוד רק עם משימת ה־merge הרגילה.
 
 ## 13. סדר עבודה מומלץ קצר
@@ -296,7 +300,8 @@ ORDER BY t;
 3. עבודה רגילה
 4. אם צריך, `Start App Only (FE Local API + BE Dev DB)` או אחד מ־`Workspace: FE ...`
 5. לפני deploy: בדיקת מצב שוב עם `Show Active Modes`
-6. Deploy שרת: `Deploy Server to Production (main)`
-7. רק במקרה חריג: `Advanced: One-Time Force Replace Production main`
-8. `Deploy Web to GitHub Pages` לפי הצורך
-9. `Stop App Only (FE + BE)` או `Stop Full Dev Environment`
+6. פעם ראשונה בלבד: `One-Time: Promote Prod DB Lock to main`
+7. אחר כך באופן שוטף: `Deploy Server to Production (main)`
+8. רק במקרה חריג: `Advanced: One-Time Force Replace Production main`
+9. `Deploy Web to GitHub Pages` לפי הצורך
+10. `Stop App Only (FE + BE)` או `Stop Full Dev Environment`

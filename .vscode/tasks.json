@@ -462,6 +462,21 @@
       "problemMatcher": []
     },
     {
+      "label": "One-Time: Promote Prod DB Lock to main",
+      "type": "shell",
+      "command": "ALLOW_PROD_LOCK_UPDATE=1 ./scripts/merge_server_branch_to_main.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Advanced: One-Time Force Replace Production main",
       "type": "shell",
       "command": "./scripts/deploy_server.sh",
