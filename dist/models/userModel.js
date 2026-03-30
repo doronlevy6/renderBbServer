@@ -6,7 +6,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const pg_1 = require("pg");
 const dotenv_1 = __importDefault(require("dotenv"));
-const envFile = process.env.ENV_FILE || '.env';
+const defaultEnvFile = process.env.NODE_ENV === 'production' ? '.env.production.lock' : '.env';
+const envFile = process.env.ENV_FILE || defaultEnvFile;
 dotenv_1.default.config({ path: envFile });
 const { DATABASE_URL, PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD, SSL_FALSE, } = process.env;
 // הגדרת SSL בהתאם למשתנה SSL_FALSE
