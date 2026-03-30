@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SOURCE_BRANCH="${SOURCE_BRANCH:-$(git -C "${SERVER_DIR}" branch --show-current)}"
 TARGET_BRANCH="${TARGET_BRANCH:-main}"
+PROD_ENV_FILE="${PROD_ENV_FILE:-${SERVER_DIR}/.env.proddb}"
+REQUIRE_NEON_HOST="${REQUIRE_NEON_HOST:-1}"
 
 log() {
   echo "[server-deploy] $1"
@@ -18,6 +20,53 @@ require_clean_worktree() {
     echo "[server-deploy] Commit or stash your changes before deploying the server."
     exit 1
   fi
+}
+
+read_env_value() {
+  local file="$1"
+  local key="$2"
+  awk -F'=' -v k="${key}" '
+    $0 ~ /^[[:space:]]*#/ {next}
+    $1 == k {
+      val = substr($0, index($0, "=") + 1)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", val)
+      gsub(/^'\''|'\''$/, "", val)
+      gsub(/^"|"$/, "", val)
+      print val
+      exit
+    }
+  ' "${file}"
+}
+
+ensure_prod_db_target_is_neon() {
+  if [[ "${REQUIRE_NEON_HOST}" != "1" ]]; then
+    log "Neon guard skipped (REQUIRE_NEON_HOST=${REQUIRE_NEON_HOST})."
+    return
+  fi
+
+  if [[ ! -f "${PROD_ENV_FILE}" ]]; then
+    echo "[server-deploy] ERROR: missing ${PROD_ENV_FILE}."
+    echo "[server-deploy] Create it before deploy so we can verify production DB target."
+    exit 1
+  fi
+
+  local db_url pg_host target
+  db_url="$(read_env_value "${PROD_ENV_FILE}" "DATABASE_URL")"
+  pg_host="$(read_env_value "${PROD_ENV_FILE}" "PGHOST")"
+  target="${db_url:-${pg_host}}"
+
+  if [[ -z "${target}" ]]; then
+    echo "[server-deploy] ERROR: ${PROD_ENV_FILE} must include DATABASE_URL or PGHOST."
+    exit 1
+  fi
+
+  if [[ "${target}" != *"neon.tech"* ]]; then
+    echo "[server-deploy] ERROR: production DB target is not Neon: ${target}"
+    echo "[server-deploy] Refusing deploy to origin/${TARGET_BRANCH}."
+    exit 1
+  fi
+
+  log "Production DB guard passed (Neon target: ${target})."
 }
 
 main() {
@@ -37,6 +86,7 @@ main() {
   fi
 
   require_clean_worktree
+  ensure_prod_db_target_is_neon
 
   log "Fetching latest refs from origin..."
   git -C "${SERVER_DIR}" fetch origin
@@ -65,7 +115,7 @@ main() {
 
   log "Push complete."
   log "Current branch '${SOURCE_BRANCH}' is now the content of '${TARGET_BRANCH}'."
-  log "Production DB selection is controlled by the hosted server environment variables, not by local .env.devdb/.env.proddb."
+  log "Production deploy guard enforced Neon DB target from ${PROD_ENV_FILE} before push."
 }
 
 main "$@"

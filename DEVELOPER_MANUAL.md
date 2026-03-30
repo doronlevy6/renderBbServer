@@ -268,6 +268,7 @@ ORDER BY t;
 - merge של הענף הנוכחי לתוך `main`
 - דחיפה ל־`origin/main`
 - יצירת ענף עבודה חדש אוטומטית מתוך `main`
+- בדיקת בטיחות לפני deploy: יעד DB בפרוד חייב להיראות כמו `neon.tech` (נקרא מתוך `.env.proddb`)
 
 משימה מתקדמת בלבד (נדירה):
 - `Advanced: One-Time Force Replace Production main`
@@ -277,6 +278,7 @@ ORDER BY t;
 - ה־DB של הפרודקשן המארח לא נקבע מ־`.env.devdb`/`.env.proddb` המקומיים.
 - הוא נקבע מה־Environment Variables שמוגדרים בשרת המארח (Render).
 - דחיפה ל־origin לא משנה את משתני הסביבה של Render.
+- אם אתה רוצה לעקוף זמנית את בדיקת Neon (לא מומלץ), אפשר להריץ את הסקריפט עם `REQUIRE_NEON_HOST=0`.
 
 ## 12. מדיניות ענפים לפרודקשן (כיום)
 
