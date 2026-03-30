@@ -17,6 +17,7 @@ BACKEND_PORT="${BACKEND_PORT:-9090}"
 FRONTEND_PORT="${FRONTEND_PORT:-7357}"
 OPEN_FRONTEND_UI="${OPEN_FRONTEND_UI:-1}"
 TERMINAL_TARGET="${TERMINAL_TARGET:-auto}" # auto | vscode | terminal
+ALLOW_EXTERNAL_TERMINAL="${ALLOW_EXTERNAL_TERMINAL:-0}" # 0 = never open Terminal.app automatically
 
 LOG_DIR_SERVER="${SERVER_DIR}/.logs"
 LOG_DIR_FLUTTER="${FLUTTER_DIR}/.logs"
@@ -138,7 +139,19 @@ open_command_in_terminal() {
     if open_command_in_vscode_terminal "${command}"; then
       return 0
     fi
+    if [[ "${ALLOW_EXTERNAL_TERMINAL}" != "1" ]]; then
+      echo "[dev-start] ERROR: Could not open VS Code integrated terminal automatically."
+      echo "[dev-start] External Terminal.app fallback is disabled (ALLOW_EXTERNAL_TERMINAL=${ALLOW_EXTERNAL_TERMINAL})."
+      echo "[dev-start] Run the matching VS Code task manually from Terminal -> Run Task..."
+      return 1
+    fi
     log "Could not open VS Code integrated terminal automatically. Falling back to Terminal.app."
+  fi
+
+  if [[ "${ALLOW_EXTERNAL_TERMINAL}" != "1" ]]; then
+    echo "[dev-start] ERROR: External Terminal.app launch is disabled (ALLOW_EXTERNAL_TERMINAL=${ALLOW_EXTERNAL_TERMINAL})."
+    echo "[dev-start] Use VS Code tasks to run backend/frontend in integrated terminals."
+    return 1
   fi
 
   open_command_in_terminal_app "${command}"
