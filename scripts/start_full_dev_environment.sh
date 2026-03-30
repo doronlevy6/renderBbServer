@@ -151,11 +151,16 @@ ensure_backend_env_file() {
   fi
 
   if [[ ! -f "${file}" ]]; then
-    echo "[dev-start] ERROR: Missing backend env file: ${file}"
-    if [[ -f "${example_file}" ]]; then
-      echo "[dev-start] Create it from ${example_file} before using ${mode} DB mode."
+    if [[ "${mode}" == "dev" && -f "${example_file}" ]]; then
+      cp "${example_file}" "${file}"
+      log "Created missing dev env file from example: ${file}"
+    else
+      echo "[dev-start] ERROR: Missing backend env file: ${file}"
+      if [[ -f "${example_file}" ]]; then
+        echo "[dev-start] Create it from ${example_file} before using ${mode} DB mode."
+      fi
+      exit 1
     fi
-    exit 1
   fi
   echo "${file}"
 }

@@ -47,6 +47,7 @@
 - `.env.devdb` הוא קובץ מקומי ולא מנוהל בגיט.
 - אם חסר לך הקובץ, צור אותו מתוך:
   - `.env.devdb.example`
+- בהרצת `Start Full`/`Start App` המערכת תנסה ליצור אותו אוטומטית מה־example אם הוא חסר.
 
 מה נפתח:
 - Docker Desktop
