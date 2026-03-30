@@ -3,7 +3,9 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 
-const envFile = process.env.ENV_FILE || '.env';
+const defaultEnvFile =
+  process.env.NODE_ENV === 'production' ? '.env.production.lock' : '.env';
+const envFile = process.env.ENV_FILE || defaultEnvFile;
 dotenv.config({ path: envFile });
 
 const {

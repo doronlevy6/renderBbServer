@@ -8,8 +8,10 @@ SERVER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SOURCE_BRANCH="${SOURCE_BRANCH:-$(git -C "${SERVER_DIR}" branch --show-current)}"
 TARGET_BRANCH="${TARGET_BRANCH:-main}"
 NEXT_BRANCH_NAME="${NEXT_BRANCH_NAME:-work/$(date +%F-%H%M%S)}"
-PROD_ENV_FILE="${PROD_ENV_FILE:-${SERVER_DIR}/.env.proddb}"
+PROD_LOCK_REL="${PROD_LOCK_REL:-.env.production.lock}"
+PROD_LOCK_FILE="${PROD_LOCK_FILE:-${SERVER_DIR}/${PROD_LOCK_REL}}"
 REQUIRE_NEON_HOST="${REQUIRE_NEON_HOST:-1}"
+ALLOW_PROD_LOCK_UPDATE="${ALLOW_PROD_LOCK_UPDATE:-0}"
 
 log() {
   echo "[server-merge] $1"
@@ -45,19 +47,19 @@ ensure_prod_db_target_is_neon() {
     return
   fi
 
-  if [[ ! -f "${PROD_ENV_FILE}" ]]; then
-    echo "[server-merge] ERROR: missing ${PROD_ENV_FILE}."
+  if [[ ! -f "${PROD_LOCK_FILE}" ]]; then
+    echo "[server-merge] ERROR: missing ${PROD_LOCK_FILE}."
     echo "[server-merge] Create it before deploy so we can verify production DB target."
     exit 1
   fi
 
   local db_url pg_host target
-  db_url="$(read_env_value "${PROD_ENV_FILE}" "DATABASE_URL")"
-  pg_host="$(read_env_value "${PROD_ENV_FILE}" "PGHOST")"
+  db_url="$(read_env_value "${PROD_LOCK_FILE}" "DATABASE_URL")"
+  pg_host="$(read_env_value "${PROD_LOCK_FILE}" "PGHOST")"
   target="${db_url:-${pg_host}}"
 
   if [[ -z "${target}" ]]; then
-    echo "[server-merge] ERROR: ${PROD_ENV_FILE} must include DATABASE_URL or PGHOST."
+    echo "[server-merge] ERROR: ${PROD_LOCK_FILE} must include DATABASE_URL or PGHOST."
     exit 1
   fi
 
@@ -68,6 +70,24 @@ ensure_prod_db_target_is_neon() {
   fi
 
   log "Production DB guard passed (Neon target: ${target})."
+}
+
+ensure_prod_lock_is_not_changed() {
+  if [[ "${ALLOW_PROD_LOCK_UPDATE}" == "1" ]]; then
+    log "Prod lock-change guard skipped (ALLOW_PROD_LOCK_UPDATE=1)."
+    return
+  fi
+
+  if ! git -C "${SERVER_DIR}" show-ref --verify --quiet "refs/remotes/origin/${TARGET_BRANCH}"; then
+    return
+  fi
+
+  if ! git -C "${SERVER_DIR}" diff --quiet "origin/${TARGET_BRANCH}" "${SOURCE_BRANCH}" -- "${PROD_LOCK_REL}"; then
+    echo "[server-merge] ERROR: ${PROD_LOCK_REL} differs from origin/${TARGET_BRANCH}."
+    echo "[server-merge] Refusing deploy so production DB routing remains stable."
+    echo "[server-merge] If this is intentional, rerun with ALLOW_PROD_LOCK_UPDATE=1."
+    exit 1
+  fi
 }
 
 main() {
@@ -97,6 +117,7 @@ main() {
 
   log "Fetching latest refs from origin..."
   git -C "${SERVER_DIR}" fetch origin
+  ensure_prod_lock_is_not_changed
 
   local backup_branch=""
   if git -C "${SERVER_DIR}" show-ref --verify --quiet "refs/remotes/origin/${TARGET_BRANCH}"; then
@@ -130,7 +151,7 @@ main() {
 
   log "Merge workflow complete."
   log "Current branch is now '${NEXT_BRANCH_NAME}'."
-  log "Production deploy guard enforced Neon DB target from ${PROD_ENV_FILE} before push."
+  log "Production deploy guards enforced Neon target from ${PROD_LOCK_FILE}."
 }
 
 main "$@"
