@@ -52,7 +52,7 @@ main() {
       1)
         run_step \
           "Start Full Dev Environment" \
-          "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=1 OPEN_PGADMIN_UI=1 ./scripts/start_full_dev_environment.sh"
+          "TERMINAL_TARGET=vscode FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=1 OPEN_PGADMIN_UI=1 ./scripts/start_full_dev_environment.sh"
         ;;
       2)
         run_step \
@@ -62,7 +62,7 @@ main() {
       3)
         run_step \
           "Start App Only" \
-          "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=1 ./scripts/start_full_dev_environment.sh"
+          "TERMINAL_TARGET=vscode FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=1 ./scripts/start_full_dev_environment.sh"
         ;;
       4)
         run_step \

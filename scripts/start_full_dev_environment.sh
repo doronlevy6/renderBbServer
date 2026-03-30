@@ -16,6 +16,7 @@ START_PGADMIN_CONTAINER="${START_PGADMIN_CONTAINER:-1}"
 BACKEND_PORT="${BACKEND_PORT:-9090}"
 FRONTEND_PORT="${FRONTEND_PORT:-7357}"
 OPEN_FRONTEND_UI="${OPEN_FRONTEND_UI:-1}"
+TERMINAL_TARGET="${TERMINAL_TARGET:-auto}" # auto | vscode | terminal
 
 LOG_DIR_SERVER="${SERVER_DIR}/.logs"
 LOG_DIR_FLUTTER="${FLUTTER_DIR}/.logs"
@@ -83,7 +84,7 @@ kill_listening_process_if_matches() {
   fi
 }
 
-open_command_in_terminal() {
+open_command_in_terminal_app() {
   local command="$1"
   local applescript_command
   if ! has_cmd osascript; then
@@ -98,6 +99,49 @@ open_command_in_terminal() {
     -e "activate" \
     -e "do script \"${applescript_command}\"" \
     -e "end tell" >/dev/null 2>&1
+}
+
+open_command_in_vscode_terminal() {
+  local command="$1"
+  local applescript_command
+  if ! has_cmd osascript; then
+    return 1
+  fi
+
+  applescript_command="${command//\\/\\\\}"
+  applescript_command="${applescript_command//\"/\\\"}"
+  osascript \
+    -e "tell application \"Visual Studio Code\" to activate" \
+    -e "tell application \"System Events\"" \
+    -e "tell process \"Code\"" \
+    -e "keystroke \"\`\" using {control down, shift down}" \
+    -e "delay 0.2" \
+    -e "keystroke \"${applescript_command}\"" \
+    -e "key code 36" \
+    -e "end tell" \
+    -e "end tell" >/dev/null 2>&1
+}
+
+open_command_in_terminal() {
+  local command="$1"
+  local resolved_target="${TERMINAL_TARGET}"
+
+  if [[ "${resolved_target}" == "auto" ]]; then
+    if [[ "${TERM_PROGRAM:-}" == "vscode" || -n "${VSCODE_PID:-}" ]]; then
+      resolved_target="vscode"
+    else
+      resolved_target="terminal"
+    fi
+  fi
+
+  if [[ "${resolved_target}" == "vscode" ]]; then
+    if open_command_in_vscode_terminal "${command}"; then
+      return 0
+    fi
+    log "Could not open VS Code integrated terminal automatically. Falling back to Terminal.app."
+  fi
+
+  open_command_in_terminal_app "${command}"
 }
 
 pid_is_alive() {
