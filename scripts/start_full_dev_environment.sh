@@ -15,6 +15,7 @@ START_APP_PROCESSES="${START_APP_PROCESSES:-0}"
 START_PGADMIN_CONTAINER="${START_PGADMIN_CONTAINER:-1}"
 BACKEND_PORT="${BACKEND_PORT:-9090}"
 FRONTEND_PORT="${FRONTEND_PORT:-7357}"
+OPEN_FRONTEND_UI="${OPEN_FRONTEND_UI:-1}"
 
 LOG_DIR_SERVER="${SERVER_DIR}/.logs"
 LOG_DIR_FLUTTER="${FLUTTER_DIR}/.logs"
@@ -300,6 +301,9 @@ start_frontend_if_needed() {
     else
       log "Frontend already listening on ${FRONTEND_PORT} (unknown mode)."
     fi
+    if [[ "${OPEN_FRONTEND_UI}" == "1" ]]; then
+      open "http://localhost:${FRONTEND_PORT}" >/dev/null 2>&1 || true
+    fi
     return
   fi
 
@@ -318,6 +322,12 @@ start_frontend_if_needed() {
   frontend_command="$(printf '%q ' "${runner_script}" "${api_mode}" "${app_env}" "${FRONTEND_PORT}" "${FRONTEND_META_FILE}" "${pid_file}" "${FLUTTER_DIR}")"
   open_command_in_terminal "${frontend_command}"
   log "Frontend terminal opened. Flutter may take a little time to finish booting Chrome."
+  if [[ "${OPEN_FRONTEND_UI}" == "1" ]]; then
+    (
+      wait_for_port "${FRONTEND_PORT}" "Frontend" 90 >/dev/null 2>&1 || true
+      open "http://localhost:${FRONTEND_PORT}" >/dev/null 2>&1 || true
+    ) &
+  fi
 }
 
 open_pgadmin_ui() {

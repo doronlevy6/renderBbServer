@@ -56,6 +56,7 @@
 - טרמינל של `Prepare` בתוך VS Code
 - טרמינל גלוי ל־backend בתוך VS Code
 - טרמינל גלוי ל־frontend בתוך VS Code
+- טאב דפדפן לאפליקציית הפרונט (`http://localhost:7357`) כאשר הפרונט עולה
 
 הערה:
 - ה־backend וה־frontend לא רצים "מאחורי הקלעים".
