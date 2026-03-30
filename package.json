@@ -4,7 +4,7 @@
   "description": "Simple Node.js/Express server",
   "main": "server.js",
   "scripts": {
-    "start": "node dist/server.js",
+    "start": "ENV_FILE=.env.production.lock node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only --watch .env src/server.ts",
     "build": "tsc"
   },

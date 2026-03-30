@@ -9,7 +9,9 @@ import financeRoutes from './controllers/financeController'; // NEW: Finance rou
 import { initialize } from './socket/socket';
 import createTables from './dbInit';
 
-const envFile = process.env.ENV_FILE || '.env';
+const defaultEnvFile =
+  process.env.NODE_ENV === 'production' ? '.env.production.lock' : '.env';
+const envFile = process.env.ENV_FILE || defaultEnvFile;
 dotenv.config({ path: envFile });
 console.log(`Using environment file: ${envFile}`);
 

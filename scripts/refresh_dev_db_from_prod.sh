@@ -9,13 +9,10 @@ DEV_ENV_FILE="${DEV_ENV_FILE:-${SERVER_DIR}/.env.devdb}"
 PROD_ENV_FILE="${PROD_ENV_FILE:-${SERVER_DIR}/.env.proddb}"
 DB_CONTAINER="${DB_CONTAINER:-bb-db}"
 DUMP_FILE="${SERVER_DIR}/.logs/prod-db.dump"
+PG_CLIENT_IMAGE="${PG_CLIENT_IMAGE:-postgres:15}"
 
 log() {
   echo "[db-refresh] $1"
-}
-
-has_cmd() {
-  command -v "$1" >/dev/null 2>&1
 }
 
 require_file() {
@@ -67,12 +64,16 @@ load_env() {
   source "${file}"
 }
 
-main() {
-  if ! has_cmd pg_dump || ! has_cmd pg_restore || ! has_cmd psql; then
-    echo "[db-refresh] ERROR: pg_dump, pg_restore and psql must be installed."
-    exit 1
+docker_host_for_client() {
+  local host="$1"
+  if [[ "${host}" == "localhost" || "${host}" == "127.0.0.1" ]]; then
+    echo "host.docker.internal"
+    return
   fi
+  echo "${host}"
+}
 
+main() {
   require_file "${DEV_ENV_FILE}"
   require_file "${PROD_ENV_FILE}"
   mkdir -p "${SERVER_DIR}/.logs"
@@ -93,6 +94,10 @@ main() {
   local dev_user="${PGUSER}"
   local dev_password="${PGPASSWORD}"
   local dev_ssl="${SSL_FALSE:-false}"
+  local prod_host_for_docker
+  local dev_host_for_docker
+  prod_host_for_docker="$(docker_host_for_client "${prod_host}")"
+  dev_host_for_docker="$(docker_host_for_client "${dev_host}")"
 
   log "About to refresh dev DB '${dev_db}' from prod DB '${prod_db}'."
   log "This will replace the DEV database completely. Production is untouched."
@@ -104,51 +109,52 @@ main() {
     exit 0
   fi
 
-  export PGPASSWORD="${prod_password}"
-  if [[ "${prod_ssl}" != "false" ]]; then
-    export PGSSLMODE=require
-  else
-    unset PGSSLMODE || true
-  fi
-
   log "Dumping production database..."
-  pg_dump \
-    --host="${prod_host}" \
-    --username="${prod_user}" \
-    --dbname="${prod_db}" \
-    --no-owner \
-    --no-acl \
-    --format=custom \
-    --verbose \
-    --file="${DUMP_FILE}"
-
-  export PGPASSWORD="${dev_password}"
-  if [[ "${dev_ssl}" != "false" ]]; then
-    export PGSSLMODE=require
-  else
-    unset PGSSLMODE || true
-  fi
+  docker run --rm \
+    -v "${SERVER_DIR}/.logs:/work" \
+    -e PGPASSWORD="${prod_password}" \
+    -e PGSSLMODE="$( [[ "${prod_ssl}" != "false" ]] && echo "require" || echo "disable" )" \
+    "${PG_CLIENT_IMAGE}" \
+    pg_dump \
+      --host="${prod_host_for_docker}" \
+      --username="${prod_user}" \
+      --dbname="${prod_db}" \
+      --no-owner \
+      --no-acl \
+      --format=custom \
+      --verbose \
+      --file="/work/$(basename "${DUMP_FILE}")"
 
   log "Dropping and recreating DEV database..."
-  psql \
-    --host="${dev_host}" \
-    --username="${dev_user}" \
-    --dbname="postgres" \
-    --set=ON_ERROR_STOP=1 \
-    <<SQL
+  docker run --rm \
+    -i \
+    -e PGPASSWORD="${dev_password}" \
+    -e PGSSLMODE="$( [[ "${dev_ssl}" != "false" ]] && echo "require" || echo "disable" )" \
+    "${PG_CLIENT_IMAGE}" \
+    psql \
+      --host="${dev_host_for_docker}" \
+      --username="${dev_user}" \
+      --dbname="postgres" \
+      --set=ON_ERROR_STOP=1 \
+      <<SQL
 DROP DATABASE IF EXISTS "${dev_db}" WITH (FORCE);
 CREATE DATABASE "${dev_db}" OWNER "${dev_user}";
 SQL
 
   log "Restoring dump into DEV database..."
-  pg_restore \
-    --host="${dev_host}" \
-    --username="${dev_user}" \
-    --dbname="${dev_db}" \
-    --no-owner \
-    --no-acl \
-    --verbose \
-    "${DUMP_FILE}"
+  docker run --rm \
+    -v "${SERVER_DIR}/.logs:/work" \
+    -e PGPASSWORD="${dev_password}" \
+    -e PGSSLMODE="$( [[ "${dev_ssl}" != "false" ]] && echo "require" || echo "disable" )" \
+    "${PG_CLIENT_IMAGE}" \
+    pg_restore \
+      --host="${dev_host_for_docker}" \
+      --username="${dev_user}" \
+      --dbname="${dev_db}" \
+      --no-owner \
+      --no-acl \
+      --verbose \
+      "/work/$(basename "${DUMP_FILE}")"
 
   log "Dev database refreshed from prod successfully."
 }

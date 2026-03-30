@@ -2,12 +2,28 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Start Full Dev Environment",
+      "label": "Workspace Control Panel (Menu)",
       "type": "shell",
-      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev ./scripts/start_full_dev_environment.sh",
+      "command": "./scripts/workspace_control_panel.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Full Dev Environment",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Start Infra Only (Docker + DB + pgAdmin)",
+        "_Backend: Dev DB",
+        "_Frontend: Local API"
+      ],
       "group": {
         "kind": "build",
         "isDefault": true
@@ -21,12 +37,44 @@
       "problemMatcher": []
     },
     {
-      "label": "Workspace: FE Local API + BE Dev DB",
+      "label": "Start Infra Only (Docker + DB + pgAdmin)",
       "type": "shell",
-      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev ./scripts/start_full_dev_environment.sh",
+      "command": "OPEN_PGADMIN_UI=1 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start App Only (FE Local API + BE Dev DB)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Local API + BE Dev DB",
+        "_Backend: Dev DB",
+        "_Frontend: Local API"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Workspace: FE Local API + BE Dev DB",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Local API + BE Dev DB",
+        "_Backend: Dev DB",
+        "_Frontend: Local API"
+      ],
       "presentation": {
         "echo": true,
         "reveal": "always",
@@ -37,11 +85,12 @@
     },
     {
       "label": "Workspace: FE Local API + BE Prod DB",
-      "type": "shell",
-      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=prod ./scripts/start_full_dev_environment.sh",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Local API + BE Prod DB",
+        "_Backend: Prod DB",
+        "_Frontend: Local API"
+      ],
       "presentation": {
         "echo": true,
         "reveal": "always",
@@ -52,11 +101,12 @@
     },
     {
       "label": "Workspace: FE Prod API + BE Dev DB",
-      "type": "shell",
-      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=dev ./scripts/start_full_dev_environment.sh",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Prod API + BE Dev DB",
+        "_Backend: Dev DB",
+        "_Frontend: Prod API"
+      ],
       "presentation": {
         "echo": true,
         "reveal": "always",
@@ -67,8 +117,204 @@
     },
     {
       "label": "Workspace: FE Prod API + BE Prod DB",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Prod API + BE Prod DB",
+        "_Backend: Prod DB",
+        "_Frontend: Prod API"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "_Prepare: FE Local API + BE Dev DB",
       "type": "shell",
-      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=prod ./scripts/start_full_dev_environment.sh",
+      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "_Prepare: FE Local API + BE Prod DB",
+      "type": "shell",
+      "command": "FRONTEND_API_MODE=local BACKEND_DB_MODE=prod START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "_Prepare: FE Prod API + BE Dev DB",
+      "type": "shell",
+      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=dev START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "_Prepare: FE Prod API + BE Prod DB",
+      "type": "shell",
+      "command": "FRONTEND_API_MODE=prod BACKEND_DB_MODE=prod START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "_Backend: Dev DB",
+      "type": "shell",
+      "command": "./scripts/run_backend_terminal.sh dev ${workspaceFolder}/.env.devdb 9090 ${workspaceFolder}/.logs/backend.meta ${workspaceFolder}/.logs/backend-dev.pid ${workspaceFolder}",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "isBackground": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "bb-runtime"
+      },
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Server running on port 9090"
+        }
+      }
+    },
+    {
+      "label": "_Backend: Prod DB",
+      "type": "shell",
+      "command": "./scripts/run_backend_terminal.sh prod ${workspaceFolder}/.env.proddb 9090 ${workspaceFolder}/.logs/backend.meta ${workspaceFolder}/.logs/backend-prod.pid ${workspaceFolder}",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "isBackground": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "bb-runtime"
+      },
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Server running on port 9090"
+        }
+      }
+    },
+    {
+      "label": "_Frontend: Local API",
+      "type": "shell",
+      "command": "./scripts/run_frontend_terminal.sh local LOCAL 7357 ${workspaceFolder}/../BB_flutter/.logs/frontend.meta ${workspaceFolder}/../BB_flutter/.logs/flutter-web-local.pid ${workspaceFolder}/../BB_flutter",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "isBackground": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "bb-runtime"
+      },
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "A Dart VM Service on Chrome is available at:|Flutter run key commands\\."
+        }
+      }
+    },
+    {
+      "label": "_Frontend: Prod API",
+      "type": "shell",
+      "command": "./scripts/run_frontend_terminal.sh prod PROD 7357 ${workspaceFolder}/../BB_flutter/.logs/frontend.meta ${workspaceFolder}/../BB_flutter/.logs/flutter-web-prod.pid ${workspaceFolder}/../BB_flutter",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "hide": true,
+      "isBackground": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "bb-runtime"
+      },
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "A Dart VM Service on Chrome is available at:|Flutter run key commands\\."
+        }
+      }
+    },
+    {
+      "label": "Workspace: Show Active Modes",
+      "type": "shell",
+      "command": "bash ./scripts/show_active_modes.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -81,9 +327,99 @@
       "problemMatcher": []
     },
     {
-      "label": "Workspace: Show Active Modes",
+      "label": "Start Frontend Only (Local API)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Local API + BE Dev DB",
+        "_Frontend: Local API"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Frontend Only (Prod API)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Prod API + BE Dev DB",
+        "_Frontend: Prod API"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Backend Only (Dev DB)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Local API + BE Dev DB",
+        "_Backend: Dev DB"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Backend Only (Prod DB)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "_Prepare: FE Local API + BE Prod DB",
+        "_Backend: Prod DB"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Open pgAdmin UI",
       "type": "shell",
-      "command": "if [ -f ./.logs/active-mode.txt ]; then cat ./.logs/active-mode.txt; else echo \"No active mode file yet. Run a Workspace task first.\"; fi",
+      "command": "OPEN_PGADMIN_UI=1 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop App Only (FE + BE)",
+      "type": "shell",
+      "command": "STOP_INFRA_CONTAINERS=0 ./scripts/stop_full_dev_environment.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop Infra Only (DB + pgAdmin)",
+      "type": "shell",
+      "command": "STOP_APP_PROCESSES=0 ./scripts/stop_full_dev_environment.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -126,7 +462,37 @@
       "problemMatcher": []
     },
     {
-      "label": "Deploy Server Branch to Origin",
+      "label": "Deploy Server to Production (main)",
+      "type": "shell",
+      "command": "./scripts/merge_server_branch_to_main.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "One-Time: Promote Prod DB Lock to main",
+      "type": "shell",
+      "command": "ALLOW_PROD_LOCK_UPDATE=1 ./scripts/merge_server_branch_to_main.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Advanced: One-Time Force Replace Production main",
       "type": "shell",
       "command": "./scripts/deploy_server.sh",
       "options": {

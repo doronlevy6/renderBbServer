@@ -12,7 +12,8 @@ const userController_1 = __importDefault(require("./controllers/userController")
 const financeController_1 = __importDefault(require("./controllers/financeController")); // NEW: Finance routes
 const socket_1 = require("./socket/socket");
 const dbInit_1 = __importDefault(require("./dbInit"));
-const envFile = process.env.ENV_FILE || '.env';
+const defaultEnvFile = process.env.NODE_ENV === 'production' ? '.env.production.lock' : '.env';
+const envFile = process.env.ENV_FILE || defaultEnvFile;
 dotenv_1.default.config({ path: envFile });
 console.log(`Using environment file: ${envFile}`);
 const app = (0, express_1.default)();
