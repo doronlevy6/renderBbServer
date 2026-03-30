@@ -40,7 +40,7 @@ EOF
 echo "$$" > "${PID_FILE}"
 
 printf '\033]1;BB Backend (%s)\007' "${MODE}"
-clear
+clear >/dev/null 2>&1 || true
 echo "=== BB Backend (${MODE}) ==="
 echo "ENV_FILE=${ENV_FILE}"
 echo "Port=${PORT}"
