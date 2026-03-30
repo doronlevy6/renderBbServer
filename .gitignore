@@ -10,4 +10,5 @@ models/userModel.js
 dist/generated/
 src/generated/runtimeMode.ts
 .env
+.env.devdb
 .env.proddb

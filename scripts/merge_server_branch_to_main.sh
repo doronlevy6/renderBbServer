@@ -80,6 +80,7 @@ main() {
 
   log "Merge workflow complete."
   log "Current branch is now '${NEXT_BRANCH_NAME}'."
+  log "Production DB selection is controlled by hosted environment variables, not by local .env files."
 }
 
 main "$@"

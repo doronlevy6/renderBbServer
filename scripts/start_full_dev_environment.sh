@@ -141,16 +141,19 @@ ensure_valid_modes() {
 ensure_backend_env_file() {
   local mode="$1"
   local file
+  local example_file
   if [[ "${mode}" == "dev" ]]; then
     file="${SERVER_DIR}/.env.devdb"
+    example_file="${SERVER_DIR}/.env.devdb.example"
   else
     file="${SERVER_DIR}/.env.proddb"
+    example_file="${SERVER_DIR}/.env.proddb.example"
   fi
 
   if [[ ! -f "${file}" ]]; then
     echo "[dev-start] ERROR: Missing backend env file: ${file}"
-    if [[ "${mode}" == "prod" ]]; then
-      echo "[dev-start] Create it from ${SERVER_DIR}/.env.proddb.example before using prod DB mode."
+    if [[ -f "${example_file}" ]]; then
+      echo "[dev-start] Create it from ${example_file} before using ${mode} DB mode."
     fi
     exit 1
   fi

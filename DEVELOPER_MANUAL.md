@@ -35,6 +35,11 @@
 - Frontend: `LOCAL`
 - Backend DB: `dev` (`.env.devdb`)
 
+חשוב:
+- `.env.devdb` הוא קובץ מקומי ולא מנוהל בגיט.
+- אם חסר לך הקובץ, צור אותו מתוך:
+  - `.env.devdb.example`
+
 מה נפתח:
 - Docker Desktop
 - `bb-db`
@@ -254,17 +259,8 @@ ORDER BY t;
 
 ## 11. Deploy לשרת (קוד)
 
-משימה חד־פעמית לניקוי היסטוריה ישנה:
-- `One-Time: Replace Production main with Current Branch`
-
-מה היא עושה:
-- `npm run build`
-- יצירת גיבוי ל־`main` הנוכחי
-- החלפת `main` בתוכן של הענף הנוכחי
-- דחיפה ל־`origin/main`
-
-משימת העבודה הרגילה אחרי שננקה פעם אחת את `main`:
-- `Merge Current Server Branch into main and Start New Branch`
+משימת deploy הרגילה:
+- `Deploy Server to Production (main)`
 
 מה היא עושה:
 - `npm run build`
@@ -273,9 +269,14 @@ ORDER BY t;
 - דחיפה ל־`origin/main`
 - יצירת ענף עבודה חדש אוטומטית מתוך `main`
 
+משימה מתקדמת בלבד (נדירה):
+- `Advanced: One-Time Force Replace Production main`
+- מיועדת למצב חד־פעמי בלבד שבו מחליפים את `main` בכוח.
+
 חשוב:
 - ה־DB של הפרודקשן המארח לא נקבע מ־`.env.devdb`/`.env.proddb` המקומיים.
 - הוא נקבע מה־Environment Variables שמוגדרים בשרת המארח (Render).
+- דחיפה ל־origin לא משנה את משתני הסביבה של Render.
 
 ## 12. מדיניות ענפים לפרודקשן (כיום)
 
@@ -292,7 +293,7 @@ ORDER BY t;
 3. עבודה רגילה
 4. אם צריך, `Start App Only (FE Local API + BE Dev DB)` או אחד מ־`Workspace: FE ...`
 5. לפני deploy: בדיקת מצב שוב עם `Show Active Modes`
-6. בפעם הראשונה: `One-Time: Replace Production main with Current Branch`
-7. אחרי זה: `Merge Current Server Branch into main and Start New Branch`
+6. Deploy שרת: `Deploy Server to Production (main)`
+7. רק במקרה חריג: `Advanced: One-Time Force Replace Production main`
 8. `Deploy Web to GitHub Pages` לפי הצורך
 9. `Stop App Only (FE + BE)` או `Stop Full Dev Environment`
