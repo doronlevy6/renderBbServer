@@ -36,8 +36,6 @@ print_menu() {
  9) Refresh Dev DB From Prod
 10) Deploy Web to GitHub Pages
 11) Deploy Server to Production (main)
-12) One-Time: Promote Prod DB Lock to main
-13) Advanced: One-Time Force Replace main
  0) Exit
 ==============================================================
 EOF
@@ -108,16 +106,6 @@ main() {
         run_step \
           "Deploy Server to Production (main)" \
           "./scripts/merge_server_branch_to_main.sh"
-        ;;
-      12)
-        run_step \
-          "One-Time: Promote Prod DB Lock to main" \
-          "ALLOW_PROD_LOCK_UPDATE=1 ./scripts/merge_server_branch_to_main.sh"
-        ;;
-      13)
-        run_step \
-          "Advanced: One-Time Force Replace main" \
-          "./scripts/deploy_server.sh"
         ;;
       0)
         echo "Bye."

@@ -282,27 +282,17 @@ ORDER BY t;
 - בדיקת בטיחות לפני deploy: יעד DB בפרוד חייב להיראות כמו `neon.tech` (נקרא מתוך `.env.production.lock`)
 - בדיקת יציבות: אם `.env.production.lock` שונה לעומת `origin/main`, ה־deploy נחסם כברירת מחדל
 
-משימה מתקדמת בלבד (נדירה):
-- `Advanced: One-Time Force Replace Production main`
-- מיועדת למצב חד־פעמי בלבד שבו מחליפים את `main` בכוח.
-
-משימה חד־פעמית מומלצת רק בפעם הראשונה שבה מכניסים את נעילת הפרוד ל־`main`:
-- `One-Time: Promote Prod DB Lock to main`
-- זו אותה זרימת deploy רגילה, אבל עם הרשאה חד־פעמית לעדכן את `.env.production.lock`.
-
 חשוב:
 - ניתוב ה־DB של פרודקשן מקובע בריפו בקובץ: `.env.production.lock`.
 - בלוקאל עובדים עם `.env.devdb`/`.env.proddb`, אבל הדחיפה לפרוד מוגנת כדי לא לשנות את נעילת הפרוד בטעות.
-- אם אתה רוצה לעדכן בכוונה את קובץ הנעילה של פרודקשן, צריך להריץ עם `ALLOW_PROD_LOCK_UPDATE=1`.
-- אם אתה רוצה לעקוף זמנית את בדיקת Neon (לא מומלץ), אפשר להריץ את הסקריפט עם `REQUIRE_NEON_HOST=0`.
+- אם אתה רוצה לעקוף זמנית את בדיקת Neon (לא מומלץ), אפשר להריץ את הסקריפט ידנית עם `REQUIRE_NEON_HOST=0`.
 
 ## 12. מדיניות ענפים לפרודקשן (כיום)
 
 נכון להיום:
 - ענף הפרודקשן הוא `main`.
 - כרגע הענף המעודכן לעבודה הוא `setup-ops`.
-- אחרי שתבדוק אותו, נריץ פעם אחת את `One-Time: Promote Prod DB Lock to main`.
-- אחר כך נעבוד רק עם משימת ה־merge הרגילה.
+- עובדים רק עם משימת ה־merge הרגילה ל־production.
 
 ## 13. סדר עבודה מומלץ קצר
 
@@ -311,8 +301,6 @@ ORDER BY t;
 3. עבודה רגילה
 4. אם צריך, `Start App Only (FE Local API + BE Dev DB)` או אחד מ־`Workspace: FE ...`
 5. לפני deploy: בדיקת מצב שוב עם `Show Active Modes`
-6. פעם ראשונה בלבד: `One-Time: Promote Prod DB Lock to main`
-7. אחר כך באופן שוטף: `Deploy Server to Production (main)`
-8. רק במקרה חריג: `Advanced: One-Time Force Replace Production main`
-9. `Deploy Web to GitHub Pages` לפי הצורך
-10. `Stop App Only (FE + BE)` או `Stop Full Dev Environment`
+6. Deploy שרת: `Deploy Server to Production (main)`
+7. `Deploy Web to GitHub Pages` לפי הצורך
+8. `Stop App Only (FE + BE)` או `Stop Full Dev Environment`
