@@ -7,6 +7,7 @@ SERVER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 FLUTTER_DIR="${SERVER_DIR}/../BB_flutter"
 BACKEND_PORT="${BACKEND_PORT:-9090}"
 FRONTEND_PORT="${FRONTEND_PORT:-7357}"
+PANEL_VERSION="$(git -C "${SERVER_DIR}" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 
 run_step() {
   local title="$1"
@@ -77,10 +78,11 @@ start_app_direct() {
 }
 
 print_menu() {
-  cat <<'EOF'
+  cat <<EOF
 
 ================= BB Workspace Control Panel =================
  App processes run in VS Code integrated terminals only.
+ Version: ${PANEL_VERSION}
  1) Start Full Dev (FE local + BE dev + infra)
  2) Start Infra Only (Docker + DB + pgAdmin + open UI)
  3) Start App Only (FE local + BE dev)
