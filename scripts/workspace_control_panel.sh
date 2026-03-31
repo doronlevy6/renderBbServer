@@ -67,6 +67,7 @@ print_menu() {
  9) Refresh Dev DB From Prod
 10) Deploy Web to GitHub Pages
 11) Deploy Server to Production (main)
+12) Start Frontend Only (Local API)
  0) Exit
 ==============================================================
 EOF
@@ -137,6 +138,14 @@ main() {
         run_step \
           "Deploy Server to Production (main)" \
           "./scripts/merge_server_branch_to_main.sh"
+        ;;
+      12)
+        run_step \
+          "Prepare FE Local API + BE Dev DB" \
+          "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh"
+        run_step \
+          "Start Frontend Only (Local API)" \
+          "./scripts/run_frontend_terminal.sh local LOCAL ${FRONTEND_PORT} ${FLUTTER_DIR}/.logs/frontend.meta ${FLUTTER_DIR}/.logs/flutter-web-local.pid ${FLUTTER_DIR}"
         ;;
       0)
         echo "Bye."
