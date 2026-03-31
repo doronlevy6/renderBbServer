@@ -72,24 +72,41 @@ export function registerPaymentRoutes(router: Router): void {
       await pool.query(paymentQuery, paymentValues);
 
       // Send payment confirmation email
+      let emailStatus: 'sent' | 'skipped' | 'failed' = 'skipped';
+      let emailReason:
+        | 'smtp_not_configured'
+        | 'missing_recipient_email'
+        | 'send_failed'
+        | null = null;
       try {
-        if (userRes.rows[0].email) {
-          await sendPaymentConfirmationEmail(
-            userRes.rows[0].email,
-            username,
-            Number(amount),
-            method,
-            paymentDate
-          );
-        }
+        const emailResult = await sendPaymentConfirmationEmail(
+          userRes.rows[0].email,
+          username,
+          Number(amount),
+          method,
+          paymentDate
+        );
+        emailStatus = emailResult.sent
+          ? 'sent'
+          : emailResult.attempted
+          ? 'failed'
+          : 'skipped';
+        emailReason = emailResult.reason || null;
       } catch (emailError) {
         // Log but don't fail the payment if email fails
         console.error('Failed to send payment confirmation email:', emailError);
+        emailStatus = 'failed';
+        emailReason = 'send_failed';
       }
 
       res
         .status(200)
-        .json({ success: true, message: 'Payment recorded successfully' });
+        .json({
+          success: true,
+          message: 'Payment recorded successfully',
+          email_status: emailStatus,
+          email_reason: emailReason,
+        });
     } catch (error: any) {
       if (normalizedClientPaymentId && error?.code === '23505') {
         try {

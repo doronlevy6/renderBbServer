@@ -62,6 +62,8 @@
   - `.env.devdb.example`
 - בהרצת `Start Full`/`Start App` המערכת תנסה ליצור אותו אוטומטית מה־example אם הוא חסר.
 - תוקף הטוקן נקבע דרך `JWT_EXPIRES_IN` (ברירת מחדל: `45d`), כדי לא לדרוש התחברות תכופה.
+- תוקף refresh token נקבע דרך `REFRESH_TOKEN_EXPIRES_IN` (ברירת מחדל: `180d`).
+- השרת תומך ב־`/refresh-token` (רוטציה אוטומטית) וב־`/logout` (ביטול refresh token).
 
 מה נפתח:
 - Docker Desktop

@@ -71,18 +71,31 @@ function registerPaymentRoutes(router) {
                 : [username, team_id, amount, method, notes || '', paymentDate];
             yield userModel_1.default.query(paymentQuery, paymentValues);
             // Send payment confirmation email
+            let emailStatus = 'skipped';
+            let emailReason = null;
             try {
-                if (userRes.rows[0].email) {
-                    yield (0, emailService_1.sendPaymentConfirmationEmail)(userRes.rows[0].email, username, Number(amount), method, paymentDate);
-                }
+                const emailResult = yield (0, emailService_1.sendPaymentConfirmationEmail)(userRes.rows[0].email, username, Number(amount), method, paymentDate);
+                emailStatus = emailResult.sent
+                    ? 'sent'
+                    : emailResult.attempted
+                        ? 'failed'
+                        : 'skipped';
+                emailReason = emailResult.reason || null;
             }
             catch (emailError) {
                 // Log but don't fail the payment if email fails
                 console.error('Failed to send payment confirmation email:', emailError);
+                emailStatus = 'failed';
+                emailReason = 'send_failed';
             }
             res
                 .status(200)
-                .json({ success: true, message: 'Payment recorded successfully' });
+                .json({
+                success: true,
+                message: 'Payment recorded successfully',
+                email_status: emailStatus,
+                email_reason: emailReason,
+            });
         }
         catch (error) {
             if (normalizedClientPaymentId && (error === null || error === void 0 ? void 0 : error.code) === '23505') {

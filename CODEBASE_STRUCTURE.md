@@ -42,6 +42,7 @@ BB_server/
 │  │     └─ managementRoutes.ts       # players CRUD + role updates
 │  ├─ services/
 │  │  ├─ emailService.ts
+│  │  ├─ sessionTokenService.ts      # refresh token issue/rotate/revoke
 │  │  ├─ userService.ts
 │  │  ├─ teamService.ts
 │  │  └─ balancedTeamsService.ts
@@ -104,7 +105,7 @@ BB_flutter/lib/
 - `controllers/finance/`:
   פוצל לפי פיצ'רים כדי למנוע קובץ ענק אחד.
 - `services/`:
-  לוגיקה עסקית/אינטגרציות (למשל מייל).
+  לוגיקה עסקית/אינטגרציות (למשל מייל ו-session tokens).
 - `models/`:
   גישה למסד נתונים.
 - `scripts/`:
@@ -160,6 +161,7 @@ BB_flutter/lib/
 - פעולות ניהול שחקנים (רשימה/הוספה/עריכה/מחיקה/תפקידים) מוגנות מנהל בלבד.
 - קריאות שחקן פיננסיות (`player-balance`, `player-financials`) מותרות למנהל או למשתמש על עצמו בלבד.
 - בדפדפן, עמודי מנהל חוסמים גישה גם ברמת UI עם `Access Denied` אם המשתמש לא מנהל.
+- auth flow כולל access token + refresh token עם רוטציה (`/refresh-token`) וביטול session (`/logout`).
 
 ## 7) מצב ריפקטור נוכחי
 

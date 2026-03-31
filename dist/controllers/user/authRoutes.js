@@ -17,6 +17,17 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const userService_1 = __importDefault(require("../../services/userService"));
 const teamService_1 = __importDefault(require("../../services/teamService"));
 const userModel_1 = __importDefault(require("../../models/userModel"));
+const sessionTokenService_1 = __importDefault(require("../../services/sessionTokenService"));
+function getClientIp(req) {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (typeof forwarded === 'string' && forwarded.trim() !== '') {
+        return forwarded.split(',')[0].trim();
+    }
+    return req.socket.remoteAddress || null;
+}
+function buildAccessToken(payload, jwtSecret, jwtExpiresIn) {
+    return jsonwebtoken_1.default.sign(payload, jwtSecret, { expiresIn: jwtExpiresIn });
+}
 function registerAuthRoutes(router) {
     const jwtSecret = process.env.JWT_SECRET;
     const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '45d';
@@ -104,21 +115,37 @@ function registerAuthRoutes(router) {
         try {
             const user = yield userService_1.default.loginUser(username, password);
             if (user) {
-                const token = jsonwebtoken_1.default.sign({
+                const teamId = user.team_id;
+                if (!teamId) {
+                    res
+                        .status(400)
+                        .json({ success: false, message: 'User is not linked to a team' });
+                    return;
+                }
+                const role = user.role || 'player';
+                const token = buildAccessToken({
                     username: user.username,
                     userEmail: user.email,
-                    team_id: user.team_id,
-                    role: user.role || 'player',
-                }, jwtSecret, { expiresIn: jwtExpiresIn });
-                const isAdmin = user.role === 'manager';
+                    team_id: teamId,
+                    role,
+                }, jwtSecret, jwtExpiresIn);
+                const refreshTokenSession = yield sessionTokenService_1.default.issueRefreshToken({
+                    username: user.username,
+                    teamId,
+                    userAgent: req.get('user-agent') || null,
+                    ipAddress: getClientIp(req),
+                });
+                const isAdmin = role === 'manager';
                 res
                     .status(200)
                     .json({
                     success: true,
                     user,
                     token,
+                    refresh_token: refreshTokenSession.refreshToken,
                     is_admin: isAdmin,
                     token_expires_in: jwtExpiresIn,
+                    refresh_token_expires_in: refreshTokenSession.refreshTokenExpiresIn,
                 });
             }
             else {
@@ -126,6 +153,79 @@ function registerAuthRoutes(router) {
                     .status(401)
                     .json({ success: false, message: 'Invalid credentials' });
             }
+        }
+        catch (err) {
+            res.status(500).json({ success: false, message: err.message });
+        }
+    }));
+    // Refresh access token with refresh token rotation.
+    router.post('/refresh-token', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        if (!jwtSecret) {
+            res
+                .status(500)
+                .json({ success: false, message: 'Server JWT is not configured' });
+            return;
+        }
+        const refreshToken = (_a = req.body) === null || _a === void 0 ? void 0 : _a.refresh_token;
+        if (!refreshToken) {
+            res
+                .status(400)
+                .json({ success: false, message: 'Refresh token is required' });
+            return;
+        }
+        try {
+            const rotated = yield sessionTokenService_1.default.rotateRefreshToken(refreshToken, {
+                userAgent: req.get('user-agent') || null,
+                ipAddress: getClientIp(req),
+            });
+            if (!rotated) {
+                res
+                    .status(401)
+                    .json({ success: false, message: 'Refresh token is invalid or expired' });
+                return;
+            }
+            const role = rotated.user.role || 'player';
+            const accessToken = buildAccessToken({
+                username: rotated.user.username,
+                userEmail: rotated.user.email,
+                team_id: rotated.user.team_id,
+                role,
+            }, jwtSecret, jwtExpiresIn);
+            res.status(200).json({
+                success: true,
+                token: accessToken,
+                refresh_token: rotated.refreshToken,
+                token_expires_in: jwtExpiresIn,
+                refresh_token_expires_in: rotated.refreshTokenExpiresIn,
+                is_admin: role === 'manager',
+                user: {
+                    username: rotated.user.username,
+                    email: rotated.user.email,
+                    team_id: rotated.user.team_id,
+                    role,
+                    team_type: rotated.user.team_type,
+                },
+            });
+        }
+        catch (err) {
+            res.status(500).json({ success: false, message: err.message });
+        }
+    }));
+    // Revoke refresh token on logout.
+    router.post('/logout', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        const refreshToken = (_a = req.body) === null || _a === void 0 ? void 0 : _a.refresh_token;
+        if (!refreshToken) {
+            res.status(200).json({
+                success: true,
+                message: 'Logged out locally (no refresh token provided)',
+            });
+            return;
+        }
+        try {
+            yield sessionTokenService_1.default.revokeRefreshToken(refreshToken);
+            res.status(200).json({ success: true, message: 'Logged out successfully' });
         }
         catch (err) {
             res.status(500).json({ success: false, message: err.message });

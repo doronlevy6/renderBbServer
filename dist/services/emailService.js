@@ -27,10 +27,21 @@ const transporter = nodemailer_1.default.createTransport({
 });
 function sendPaymentConfirmationEmail(recipientEmail, username, amount, method, date) {
     return __awaiter(this, void 0, void 0, function* () {
+        if (!recipientEmail || recipientEmail.trim() == '') {
+            return {
+                attempted: false,
+                sent: false,
+                reason: 'missing_recipient_email',
+            };
+        }
         // Skip if email not configured
         if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
             console.log('Email not configured. Skipping payment confirmation email.');
-            return;
+            return {
+                attempted: false,
+                sent: false,
+                reason: 'smtp_not_configured',
+            };
         }
         const formattedDate = new Date(date).toLocaleDateString('he-IL');
         const mailOptions = {
@@ -60,10 +71,19 @@ function sendPaymentConfirmationEmail(recipientEmail, username, amount, method, 
         try {
             yield transporter.sendMail(mailOptions);
             console.log(`Payment confirmation email sent to ${recipientEmail}`);
+            return {
+                attempted: true,
+                sent: true,
+            };
         }
         catch (error) {
             console.error('Error sending email:', error);
             // Don't throw - we don't want email failures to block payment recording
+            return {
+                attempted: true,
+                sent: false,
+                reason: 'send_failed',
+            };
         }
     });
 }

@@ -43,7 +43,26 @@ const createTables = () => __awaiter(void 0, void 0, void 0, function* () {
       );
     `);
         // =====================================
-        // 3. Player Rankings Table
+        // 3. Refresh Tokens Table
+        // Session management for secure long-lived login
+        // =====================================
+        yield userModel_1.default.query(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+          token_id SERIAL PRIMARY KEY,
+          username VARCHAR(255) NOT NULL,
+          team_id INTEGER NOT NULL,
+          token_hash VARCHAR(255) NOT NULL UNIQUE,
+          issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          expires_at TIMESTAMP NOT NULL,
+          revoked_at TIMESTAMP,
+          user_agent TEXT,
+          ip_address VARCHAR(255),
+          FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE,
+          FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE
+      );
+    `);
+        // =====================================
+        // 4. Player Rankings Table
         // =====================================
         yield userModel_1.default.query(`
       CREATE TABLE IF NOT EXISTS player_rankings (
@@ -63,7 +82,7 @@ const createTables = () => __awaiter(void 0, void 0, void 0, function* () {
       );
     `);
         // =====================================
-        // 4. Next Game Enlistment Table
+        // 5. Next Game Enlistment Table
         // =====================================
         yield userModel_1.default.query(`
       CREATE TABLE IF NOT EXISTS next_game_enlistment (
@@ -76,7 +95,7 @@ const createTables = () => __awaiter(void 0, void 0, void 0, function* () {
       );
     `);
         // =====================================
-        // 5. Game Teams Table (Pre-game team generation)
+        // 6. Game Teams Table (Pre-game team generation)
         // =====================================
         yield userModel_1.default.query(`
       CREATE TABLE IF NOT EXISTS game_teams (
@@ -85,7 +104,7 @@ const createTables = () => __awaiter(void 0, void 0, void 0, function* () {
       );
     `);
         // =====================================
-        // 6. Games History Table
+        // 7. Games History Table
         // Stores the actual games that happened
         // =====================================
         yield userModel_1.default.query(`
@@ -100,7 +119,7 @@ const createTables = () => __awaiter(void 0, void 0, void 0, function* () {
       );
     `);
         // =====================================
-        // 7. Game Attendance Table
+        // 8. Game Attendance Table
         // Who played in which game
         // =====================================
         yield userModel_1.default.query(`
@@ -115,7 +134,7 @@ const createTables = () => __awaiter(void 0, void 0, void 0, function* () {
       );
     `);
         // =====================================
-        // 8. Payments Table
+        // 9. Payments Table
         // Money tracking
         // =====================================
         yield userModel_1.default.query(`
@@ -140,6 +159,14 @@ const createTables = () => __awaiter(void 0, void 0, void 0, function* () {
             yield userModel_1.default.query(`ALTER TABLE game_attendance ADD COLUMN IF NOT EXISTS adjustment_note TEXT;`);
             yield userModel_1.default.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS game_session_id VARCHAR(255) UNIQUE;`);
             yield userModel_1.default.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS client_payment_id VARCHAR(255);`);
+            yield userModel_1.default.query(`
+        CREATE INDEX IF NOT EXISTS refresh_tokens_user_team_idx
+        ON refresh_tokens (username, team_id);
+      `);
+            yield userModel_1.default.query(`
+        CREATE INDEX IF NOT EXISTS refresh_tokens_active_idx
+        ON refresh_tokens (expires_at, revoked_at);
+      `);
             yield userModel_1.default.query(`
         CREATE UNIQUE INDEX IF NOT EXISTS payments_team_client_payment_id_uq
         ON payments (team_id, client_payment_id)
