@@ -50,6 +50,21 @@ wait_for_app_ports() {
   return 1
 }
 
+start_frontend_direct() {
+  local frontend_log="${FLUTTER_DIR}/.logs/frontend-menu.log"
+
+  mkdir -p "${FLUTTER_DIR}/.logs"
+
+  (
+    cd "${SERVER_DIR}"
+    ./scripts/run_frontend_terminal.sh local LOCAL "${FRONTEND_PORT}" "${FLUTTER_DIR}/.logs/frontend.meta" "${FLUTTER_DIR}/.logs/flutter-web-local.pid" "${FLUTTER_DIR}" > "${frontend_log}" 2>&1 &
+  )
+
+  echo
+  echo "Frontend launch sent."
+  echo "Frontend log: ${frontend_log}"
+}
+
 print_menu() {
   cat <<EOF
 
@@ -143,9 +158,7 @@ main() {
         run_step \
           "Prepare FE Local API + BE Dev DB" \
           "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh"
-        run_step \
-          "Start Frontend Only (Local API)" \
-          "./scripts/run_frontend_terminal.sh local LOCAL ${FRONTEND_PORT} ${FLUTTER_DIR}/.logs/frontend.meta ${FLUTTER_DIR}/.logs/flutter-web-local.pid ${FLUTTER_DIR}"
+        start_frontend_direct
         ;;
       0)
         echo "Bye."
