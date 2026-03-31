@@ -49,6 +49,14 @@ BB_flutter/lib/
 │  ├─ api_service.dart                # שכבת API
 │  └─ offline_service.dart            # cache + queue + sync
 ├─ features/
+│  ├─ auth/
+│  │  └─ login_page.dart
+│  ├─ home/
+│  │  └─ home_page.dart
+│  ├─ finance/
+│  │  └─ financial_summary_page.dart
+│  ├─ settings/
+│  │  └─ settings_page.dart
 │  ├─ player_management/
 │  │  └─ player_management_page.dart
 │  └─ draw/
@@ -56,9 +64,10 @@ BB_flutter/lib/
 ├─ pages/
 │  ├─ player_management_page.dart     # bridge export ל-feature
 │  ├─ draw_page.dart                  # bridge export ל-feature
-│  ├─ login_page.dart
-│  ├─ home_page.dart
-│  ├─ financial_summary_page.dart
+│  ├─ login_page.dart                 # bridge export ל-feature
+│  ├─ home_page.dart                  # bridge export ל-feature
+│  ├─ financial_summary_page.dart     # bridge export ל-feature
+│  ├─ settings.dart                   # bridge export ל-feature
 │  └─ ...
 ├─ widgets/
 │  ├─ icon_button_with_label.dart     # שם תקין
@@ -103,6 +112,10 @@ BB_flutter/lib/
 קבצי bridge קיימים כדי לא לשבור imports בזמן ריפקטור:
 - `lib/pages/player_management_page.dart`
 - `lib/pages/draw_page.dart`
+- `lib/pages/login_page.dart`
+- `lib/pages/home_page.dart`
+- `lib/pages/financial_summary_page.dart`
+- `lib/pages/settings.dart`
 - `lib/widgets/icon_butten_with_label.dart`
 - `lib/model/player.dart`
 
@@ -129,10 +142,9 @@ BB_flutter/lib/
 
 בוצע:
 - פיצול `financeController` למודולים ייעודיים.
-- העברת `player_management` ו-`draw` ל-`features` עם bridge.
+- העברת `player_management`, `draw`, `login`, `home`, `financial_summary`, `settings` ל-`features` עם bridge.
 - נירמול naming של `icon_button` ו-`models/player` עם bridge.
 
 בהמשך (מומלץ):
-- להעביר גם `financial_summary_page` ל-`features/finance`.
 - לצמצם קבצי `pages` גדולים ל-widgets + state/controller.
 - להסיר bridge files אחרי שכל ה-imports עוברים למיקום החדש.
