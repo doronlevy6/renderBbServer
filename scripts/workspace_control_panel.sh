@@ -34,6 +34,7 @@ print_menu() {
   cat <<'EOF'
 
 ================= BB Workspace Control Panel =================
+ App processes run in VS Code integrated terminals only.
  1) Start Full Dev (FE local + BE dev + infra)
  2) Start Infra Only (Docker + DB + pgAdmin + open UI)
  3) Start App Only (FE local + BE dev)

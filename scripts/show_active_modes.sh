@@ -43,9 +43,9 @@ is_container_running() {
 state_word() {
   local ok="$1"
   if [[ "${ok}" == "1" ]]; then
-    echo "up"
+    echo "UP"
   else
-    echo "down"
+    echo "DOWN"
   fi
 }
 
@@ -78,19 +78,17 @@ main() {
   cfg_env_file="$(read_mode_key "Backend ENV_FILE")"
   cfg_ts="$(read_mode_key "Timestamp")"
 
-  echo "Status: ${status}"
-  echo "Frontend Runtime: $(state_word "${frontend_up}")"
-  echo "Backend Runtime: $(state_word "${backend_up}")"
-  echo "DB Container: $(state_word "${db_up}")"
-  echo "pgAdmin Container: $(state_word "${pgadmin_up}")"
+  echo "Overall Status: ${status}"
+  echo "LIVE Frontend (port ${FRONTEND_PORT}): $(state_word "${frontend_up}")"
+  echo "LIVE Backend (port ${BACKEND_PORT}): $(state_word "${backend_up}")"
+  echo "LIVE DB Container (${DB_CONTAINER}): $(state_word "${db_up}")"
+  echo "LIVE pgAdmin Container (${PGADMIN_CONTAINER}): $(state_word "${pgadmin_up}")"
   echo "Configured Frontend API Mode: ${cfg_front_mode}"
   echo "Configured Backend DB Mode: ${cfg_back_mode}"
   echo "Configured Frontend APP_ENV: ${cfg_app_env}"
   echo "Configured Backend ENV_FILE: ${cfg_env_file}"
-  echo "Frontend Port: ${FRONTEND_PORT}"
-  echo "Backend Port: ${BACKEND_PORT}"
   echo "Configured Timestamp: ${cfg_ts}"
+  echo "Legend: LIVE=actual now, Configured=last requested mode"
 }
 
 main "$@"
-

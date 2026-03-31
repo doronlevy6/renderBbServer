@@ -35,13 +35,13 @@
 - תפריט מספרי אחד עם כל הפעולות המרכזיות
 - כולל תיאור קצר לכל כפתור
 - בלי לחפש כל פעם Task שונה ב־VS Code
-- בהרמות app מהתפריט, הטרמינלים נפתחים בתוך VS Code (לא בחלון Terminal חיצוני), עם fallback אוטומטי אם VS Code לא זמין
+- בהרמות app מהתפריט, הטרמינלים נפתחים בתוך VS Code בלבד (לא בחלון Terminal חיצוני)
 
 חשוב:
 - בתפריט, פעולות `1` ו־`3` שולחות בקשה להפעלת VS Code Task ישירות.
 - אם לא התחיל אוטומטית, הפעל ידנית מאותו שם דרך `Terminal -> Run Task...`.
 - ברירת מחדל חדשה: לא נפתחים טרמינלים חיצוניים (Terminal.app) אוטומטית.
-- אם צריך לאפשר fallback חיצוני זמנית (לא מומלץ), אפשר להריץ עם `ALLOW_EXTERNAL_TERMINAL=1`.
+- אם תפעיל ידנית `ALLOW_EXTERNAL_TERMINAL=1`, רק אז יתאפשר fallback חיצוני (לא מומלץ).
 
 אם תרצה בלי תפריט, אפשר עדיין לבחור ישירות:
 - `Start Full Dev Environment`
@@ -98,9 +98,9 @@
 1. `Run Task...` -> `Workspace: Show Active Modes`
 
 תראה שם:
-- `Status` (מצב חי אמיתי כרגע: `running` / `infra_only` / `app_only` / `stopped` / `mixed`)
-- `Frontend Runtime` / `Backend Runtime`
-- `DB Container` / `pgAdmin Container`
+- `Overall Status` (מצב חי אמיתי כרגע: `running` / `infra_only` / `app_only` / `stopped` / `mixed`)
+- `LIVE Frontend` / `LIVE Backend` (UP/DOWN לפי פורטים)
+- `LIVE DB Container` / `LIVE pgAdmin Container` (UP/DOWN לפי Docker)
 - `Configured ...` (הקונפיג האחרון שהוגדר להרצה)
 
 אפשר לראות גם כאן:
