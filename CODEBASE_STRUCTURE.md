@@ -29,11 +29,16 @@ BB_server/
 │  │  ├─ userController.ts
 │  │  ├─ verifyToken.ts
 │  │  ├─ financeController.ts         # composition בלבד
-│  │  └─ finance/
+│  │  ├─ finance/
 │  │     ├─ paymentRoutes.ts          # add/delete payment + email
 │  │     ├─ gameRoutes.ts             # record game + game sessions
 │  │     ├─ reportRoutes.ts           # financial reads/summaries
 │  │     └─ settingsRoutes.ts         # team/user financial settings
+│  │  └─ user/
+│  │     ├─ authRoutes.ts             # register/login/create-team
+│  │     ├─ enlistRoutes.ts           # enlist / delete-enlist / usernames
+│  │     ├─ rankingsRoutes.ts         # rankings + players-rankings
+│  │     └─ managementRoutes.ts       # players CRUD + role updates
 │  ├─ services/
 │  │  ├─ emailService.ts
 │  │  ├─ userService.ts
@@ -52,11 +57,15 @@ BB_flutter/lib/
 │  ├─ auth/
 │  │  └─ login_page.dart
 │  ├─ home/
-│  │  └─ home_page.dart
+│  │  ├─ home_page.dart
+│  │  └─ welcome_page.dart
 │  ├─ finance/
 │  │  └─ financial_summary_page.dart
 │  ├─ settings/
 │  │  └─ settings_page.dart
+│  ├─ playground/
+│  │  ├─ playground_page.dart
+│  │  └─ interactive_playground_page.dart
 │  ├─ player_management/
 │  │  └─ player_management_page.dart
 │  └─ draw/
@@ -68,6 +77,9 @@ BB_flutter/lib/
 │  ├─ home_page.dart                  # bridge export ל-feature
 │  ├─ financial_summary_page.dart     # bridge export ל-feature
 │  ├─ settings.dart                   # bridge export ל-feature
+│  ├─ welcome_page.dart               # bridge export ל-feature
+│  ├─ playground_page.dart            # bridge export ל-feature
+│  ├─ interactive_playground_page.dart# bridge export ל-feature
 │  └─ ...
 ├─ widgets/
 │  ├─ icon_button_with_label.dart     # שם תקין
@@ -116,6 +128,9 @@ BB_flutter/lib/
 - `lib/pages/home_page.dart`
 - `lib/pages/financial_summary_page.dart`
 - `lib/pages/settings.dart`
+- `lib/pages/welcome_page.dart`
+- `lib/pages/playground_page.dart`
+- `lib/pages/interactive_playground_page.dart`
 - `lib/widgets/icon_butten_with_label.dart`
 - `lib/model/player.dart`
 
@@ -142,7 +157,8 @@ BB_flutter/lib/
 
 בוצע:
 - פיצול `financeController` למודולים ייעודיים.
-- העברת `player_management`, `draw`, `login`, `home`, `financial_summary`, `settings` ל-`features` עם bridge.
+- פיצול `userController` למודולים ייעודיים.
+- העברת `player_management`, `draw`, `login`, `home`, `welcome`, `financial_summary`, `settings`, `playground` ל-`features` עם bridge.
 - נירמול naming של `icon_button` ו-`models/player` עם bridge.
 
 בהמשך (מומלץ):
