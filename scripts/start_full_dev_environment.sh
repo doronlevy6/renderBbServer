@@ -18,6 +18,7 @@ FRONTEND_PORT="${FRONTEND_PORT:-7357}"
 OPEN_FRONTEND_UI="${OPEN_FRONTEND_UI:-1}"
 BACKEND_START_TIMEOUT_SECONDS="${BACKEND_START_TIMEOUT_SECONDS:-35}"
 BACKEND_START_MAX_ATTEMPTS="${BACKEND_START_MAX_ATTEMPTS:-2}"
+APP_START_ASYNC="${APP_START_ASYNC:-0}"
 TERMINAL_TARGET="${TERMINAL_TARGET:-auto}" # auto | vscode | terminal
 ALLOW_EXTERNAL_TERMINAL="${ALLOW_EXTERNAL_TERMINAL:-0}" # 0 = never open Terminal.app automatically
 
@@ -114,12 +115,13 @@ open_command_in_vscode_terminal() {
   applescript_command="${command//\\/\\\\}"
   applescript_command="${applescript_command//\"/\\\"}"
   osascript \
+    -e "set the clipboard to \"${applescript_command}\"" \
     -e "tell application \"Visual Studio Code\" to activate" \
     -e "tell application \"System Events\"" \
     -e "tell process \"Code\"" \
-    -e "keystroke \"\`\" using {control down, shift down}" \
-    -e "delay 0.2" \
-    -e "keystroke \"${applescript_command}\"" \
+    -e "key code 50 using {control down, shift down}" \
+    -e "delay 0.4" \
+    -e "keystroke \"v\" using {command down}" \
     -e "key code 36" \
     -e "end tell" \
     -e "end tell" >/dev/null 2>&1
@@ -320,6 +322,11 @@ start_backend_if_needed() {
     if ! open_command_in_terminal "${backend_command}"; then
       echo "[dev-start] ERROR: Could not open backend command in terminal."
       return 1
+    fi
+
+    if [[ "${APP_START_ASYNC}" == "1" ]]; then
+      log "Backend launch command sent (async mode)."
+      return 0
     fi
 
     if wait_for_port "${BACKEND_PORT}" "Backend" "${BACKEND_START_TIMEOUT_SECONDS}"; then
