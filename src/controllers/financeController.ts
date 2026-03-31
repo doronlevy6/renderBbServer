@@ -178,14 +178,17 @@ router.post('/add-payment', verifyToken, async (req: Request, res: Response) => 
 
         // Send payment confirmation email
         try {
-            const userRes = await pool.query('SELECT email FROM users WHERE username = $1', [username]);
+            const userRes = await pool.query(
+                'SELECT email FROM users WHERE username = $1 AND team_id = $2 LIMIT 1',
+                [username, team_id]
+            );
             if (userRes.rows.length > 0 && userRes.rows[0].email) {
                 await sendPaymentConfirmationEmail(
                     userRes.rows[0].email,
                     username,
-                    amount,
+                    Number(amount),
                     method,
-                    date || new Date()
+                    paymentDate
                 );
             }
         } catch (emailError) {
