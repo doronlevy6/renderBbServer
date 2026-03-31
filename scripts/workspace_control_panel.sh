@@ -13,12 +13,20 @@ run_step() {
   echo "=== ${title} ==="
   echo "${cmd}"
   echo
-  (
+  if (
     cd "${SERVER_DIR}"
     eval "${cmd}"
-  )
-  echo
-  echo "Done: ${title}"
+  ); then
+    echo
+    echo "Done: ${title}"
+    return 0
+  else
+    local exit_code=$?
+    echo
+    echo "Failed: ${title} (exit=${exit_code})"
+    echo "You can retry this action from the menu."
+    return 0
+  fi
 }
 
 trigger_vscode_task() {

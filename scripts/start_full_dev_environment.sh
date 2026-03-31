@@ -16,6 +16,8 @@ START_PGADMIN_CONTAINER="${START_PGADMIN_CONTAINER:-1}"
 BACKEND_PORT="${BACKEND_PORT:-9090}"
 FRONTEND_PORT="${FRONTEND_PORT:-7357}"
 OPEN_FRONTEND_UI="${OPEN_FRONTEND_UI:-1}"
+BACKEND_START_TIMEOUT_SECONDS="${BACKEND_START_TIMEOUT_SECONDS:-35}"
+BACKEND_START_MAX_ATTEMPTS="${BACKEND_START_MAX_ATTEMPTS:-2}"
 TERMINAL_TARGET="${TERMINAL_TARGET:-auto}" # auto | vscode | terminal
 ALLOW_EXTERNAL_TERMINAL="${ALLOW_EXTERNAL_TERMINAL:-0}" # 0 = never open Terminal.app automatically
 
@@ -309,12 +311,33 @@ start_backend_if_needed() {
     return
   fi
 
-  log "Opening visible backend terminal (db-mode=${mode}, ENV_FILE=$(basename "${env_file}"))..."
   local backend_command
   backend_command="$(printf '%q ' "${runner_script}" "${mode}" "${env_file}" "${BACKEND_PORT}" "${BACKEND_META_FILE}" "${pid_file}" "${SERVER_DIR}")"
-  open_command_in_terminal "${backend_command}"
-  wait_for_port "${BACKEND_PORT}" "Backend" 20
-  log "Backend is listening on ${BACKEND_PORT}."
+
+  local attempt=1
+  while (( attempt <= BACKEND_START_MAX_ATTEMPTS )); do
+    log "Opening visible backend terminal (db-mode=${mode}, ENV_FILE=$(basename "${env_file}"), attempt ${attempt}/${BACKEND_START_MAX_ATTEMPTS})..."
+    if ! open_command_in_terminal "${backend_command}"; then
+      echo "[dev-start] ERROR: Could not open backend command in terminal."
+      return 1
+    fi
+
+    if wait_for_port "${BACKEND_PORT}" "Backend" "${BACKEND_START_TIMEOUT_SECONDS}"; then
+      log "Backend is listening on ${BACKEND_PORT}."
+      return 0
+    fi
+
+    if is_port_listening "${BACKEND_PORT}"; then
+      log "Backend is listening on ${BACKEND_PORT}."
+      return 0
+    fi
+
+    log "Backend was not ready after attempt ${attempt}. Retrying..."
+    attempt=$((attempt + 1))
+  done
+
+  echo "[dev-start] ERROR: Backend did not start listening on port ${BACKEND_PORT} after ${BACKEND_START_MAX_ATTEMPTS} attempts."
+  return 1
 }
 
 restart_existing_frontend_if_mode_changed() {
