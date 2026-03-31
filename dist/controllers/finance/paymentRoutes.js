@@ -32,6 +32,7 @@ function registerPaymentRoutes(router) {
             return;
         }
         try {
+            console.log(`[payments:add] team=${team_id} username=${username} amount=${amount} method=${method} clientPaymentId=${normalizedClientPaymentId || 'none'}`);
             const userRes = yield userModel_1.default.query('SELECT email FROM users WHERE username = $1 AND team_id = $2 LIMIT 1', [username, team_id]);
             if (userRes.rows.length === 0) {
                 res.status(404).json({ success: false, message: 'Player not found in team' });
@@ -40,6 +41,7 @@ function registerPaymentRoutes(router) {
             if (normalizedClientPaymentId) {
                 const existingPayment = yield userModel_1.default.query('SELECT payment_id FROM payments WHERE team_id = $1 AND client_payment_id = $2 LIMIT 1', [team_id, normalizedClientPaymentId]);
                 if (existingPayment.rows.length > 0) {
+                    console.log(`[payments:add] duplicate skipped team=${team_id} username=${username} clientPaymentId=${normalizedClientPaymentId}`);
                     res.status(200).json({
                         success: true,
                         message: 'Payment already recorded',
@@ -70,6 +72,7 @@ function registerPaymentRoutes(router) {
                 ]
                 : [username, team_id, amount, method, notes || '', paymentDate];
             yield userModel_1.default.query(paymentQuery, paymentValues);
+            console.log(`[payments:add] inserted team=${team_id} username=${username} amount=${amount} method=${method}`);
             // Send payment confirmation email
             let emailStatus = 'skipped';
             let emailReason = null;
@@ -81,6 +84,7 @@ function registerPaymentRoutes(router) {
                         ? 'failed'
                         : 'skipped';
                 emailReason = emailResult.reason || null;
+                console.log(`[payments:add] email status team=${team_id} username=${username} status=${emailStatus}${emailReason ? ` reason=${emailReason}` : ''}`);
             }
             catch (emailError) {
                 // Log but don't fail the payment if email fails
@@ -98,6 +102,7 @@ function registerPaymentRoutes(router) {
             });
         }
         catch (error) {
+            console.error(`[payments:add] failed team=${team_id} username=${username} amount=${amount} method=${method}`, error);
             if (normalizedClientPaymentId && (error === null || error === void 0 ? void 0 : error.code) === '23505') {
                 try {
                     const duplicatePayment = yield userModel_1.default.query('SELECT payment_id FROM payments WHERE team_id = $1 AND client_payment_id = $2 LIMIT 1', [team_id, normalizedClientPaymentId]);

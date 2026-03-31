@@ -22,6 +22,9 @@ export function registerPaymentRoutes(router: Router): void {
     }
 
     try {
+      console.log(
+        `[payments:add] team=${team_id} username=${username} amount=${amount} method=${method} clientPaymentId=${normalizedClientPaymentId || 'none'}`
+      );
       const userRes = await pool.query(
         'SELECT email FROM users WHERE username = $1 AND team_id = $2 LIMIT 1',
         [username, team_id]
@@ -38,6 +41,9 @@ export function registerPaymentRoutes(router: Router): void {
         );
 
         if (existingPayment.rows.length > 0) {
+          console.log(
+            `[payments:add] duplicate skipped team=${team_id} username=${username} clientPaymentId=${normalizedClientPaymentId}`
+          );
           res.status(200).json({
             success: true,
             message: 'Payment already recorded',
@@ -70,6 +76,9 @@ export function registerPaymentRoutes(router: Router): void {
         : [username, team_id, amount, method, notes || '', paymentDate];
 
       await pool.query(paymentQuery, paymentValues);
+      console.log(
+        `[payments:add] inserted team=${team_id} username=${username} amount=${amount} method=${method}`
+      );
 
       // Send payment confirmation email
       let emailStatus: 'sent' | 'skipped' | 'failed' = 'skipped';
@@ -92,6 +101,9 @@ export function registerPaymentRoutes(router: Router): void {
           ? 'failed'
           : 'skipped';
         emailReason = emailResult.reason || null;
+        console.log(
+          `[payments:add] email status team=${team_id} username=${username} status=${emailStatus}${emailReason ? ` reason=${emailReason}` : ''}`
+        );
       } catch (emailError) {
         // Log but don't fail the payment if email fails
         console.error('Failed to send payment confirmation email:', emailError);
@@ -108,6 +120,10 @@ export function registerPaymentRoutes(router: Router): void {
           email_reason: emailReason,
         });
     } catch (error: any) {
+      console.error(
+        `[payments:add] failed team=${team_id} username=${username} amount=${amount} method=${method}`,
+        error
+      );
       if (normalizedClientPaymentId && error?.code === '23505') {
         try {
           const duplicatePayment = await pool.query(
