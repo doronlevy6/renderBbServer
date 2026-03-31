@@ -18,6 +18,8 @@ const userService_1 = __importDefault(require("../../services/userService"));
 const teamService_1 = __importDefault(require("../../services/teamService"));
 const userModel_1 = __importDefault(require("../../models/userModel"));
 function registerAuthRoutes(router) {
+    const jwtSecret = process.env.JWT_SECRET;
+    const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '45d';
     // Team creation functionality (used by registration flow).
     router.post('/create-team', (req, res) => __awaiter(this, void 0, void 0, function* () {
         const { team_name, team_password, team_type } = req.body;
@@ -93,6 +95,12 @@ function registerAuthRoutes(router) {
     router.post('/login', (req, res) => __awaiter(this, void 0, void 0, function* () {
         const { username, password } = req.body;
         console.log(username + 'connected');
+        if (!jwtSecret) {
+            res
+                .status(500)
+                .json({ success: false, message: 'Server JWT is not configured' });
+            return;
+        }
         try {
             const user = yield userService_1.default.loginUser(username, password);
             if (user) {
@@ -101,11 +109,17 @@ function registerAuthRoutes(router) {
                     userEmail: user.email,
                     team_id: user.team_id,
                     role: user.role || 'player',
-                }, process.env.JWT_SECRET, { expiresIn: '20h' });
+                }, jwtSecret, { expiresIn: jwtExpiresIn });
                 const isAdmin = user.role === 'manager';
                 res
                     .status(200)
-                    .json({ success: true, user, token, is_admin: isAdmin });
+                    .json({
+                    success: true,
+                    user,
+                    token,
+                    is_admin: isAdmin,
+                    token_expires_in: jwtExpiresIn,
+                });
             }
             else {
                 res

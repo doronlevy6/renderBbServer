@@ -25,6 +25,9 @@ interface CreateTeamRequestBody {
 }
 
 export function registerAuthRoutes(router: Router): void {
+  const jwtSecret = process.env.JWT_SECRET;
+  const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '45d';
+
   // Team creation functionality (used by registration flow).
   router.post(
     '/create-team',
@@ -130,6 +133,14 @@ export function registerAuthRoutes(router: Router): void {
     async (req: Request<{}, {}, LoginRequestBody>, res: Response) => {
       const { username, password } = req.body;
       console.log(username + 'connected');
+
+      if (!jwtSecret) {
+        res
+          .status(500)
+          .json({ success: false, message: 'Server JWT is not configured' });
+        return;
+      }
+
       try {
         const user = await userService.loginUser(username, password);
         if (user) {
@@ -140,15 +151,21 @@ export function registerAuthRoutes(router: Router): void {
               team_id: user.team_id,
               role: (user as any).role || 'player',
             },
-            process.env.JWT_SECRET as string,
-            { expiresIn: '20h' }
+            jwtSecret,
+            { expiresIn: jwtExpiresIn }
           );
 
           const isAdmin = (user as any).role === 'manager';
 
           res
             .status(200)
-            .json({ success: true, user, token, is_admin: isAdmin });
+            .json({
+              success: true,
+              user,
+              token,
+              is_admin: isAdmin,
+              token_expires_in: jwtExpiresIn,
+            });
         } else {
           res
             .status(401)
