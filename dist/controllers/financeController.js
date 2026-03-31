@@ -163,9 +163,9 @@ router.post('/add-payment', verifyToken_1.verifyToken, (req, res) => __awaiter(v
         yield userModel_1.default.query(paymentQuery, paymentValues);
         // Send payment confirmation email
         try {
-            const userRes = yield userModel_1.default.query('SELECT email FROM users WHERE username = $1', [username]);
+            const userRes = yield userModel_1.default.query('SELECT email FROM users WHERE username = $1 AND team_id = $2 LIMIT 1', [username, team_id]);
             if (userRes.rows.length > 0 && userRes.rows[0].email) {
-                yield (0, emailService_1.sendPaymentConfirmationEmail)(userRes.rows[0].email, username, amount, method, date || new Date());
+                yield (0, emailService_1.sendPaymentConfirmationEmail)(userRes.rows[0].email, username, Number(amount), method, paymentDate);
             }
         }
         catch (emailError) {
