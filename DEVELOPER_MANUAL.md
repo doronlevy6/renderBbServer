@@ -277,12 +277,15 @@ ORDER BY t;
 - `Deploy Web to GitHub Pages`
 
 התנהגות קבועה:
+- לפני build: merge אוטומטי של הענף הנוכחי לתוך `master` ב־`BB_flutter` + push ל־`origin/master`
 - build ב־`release`
 - `APP_ENV=PROD`
 - `DEPLOY_TARGET=github_pages`
+- deploy artifact אל `BB_web/main` (commit + push)
 
 משמעות:
 - האתר ב־GitHub Pages תמיד עובד מול שרת הפרודקשן.
+- ה־Flutter repo נשמר מסודר: קודם `master` מתעדכן, ואז `BB_web` מתעדכן.
 
 ## 11. Deploy לשרת (קוד)
 
