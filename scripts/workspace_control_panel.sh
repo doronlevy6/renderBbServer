@@ -8,6 +8,13 @@ FLUTTER_DIR="${SERVER_DIR}/../BB_flutter"
 BACKEND_PORT="${BACKEND_PORT:-9090}"
 FRONTEND_PORT="${FRONTEND_PORT:-7357}"
 PANEL_VERSION="$(git -C "${SERVER_DIR}" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+ACTION_LOG="${SERVER_DIR}/.logs/workspace-actions.log"
+
+log_action() {
+  local message="$1"
+  mkdir -p "$(dirname "${ACTION_LOG}")"
+  printf '[%s] %s\n' "$(date +"%Y-%m-%d %H:%M:%S %Z")" "${message}" >> "${ACTION_LOG}"
+}
 
 run_step() {
   local title="$1"
@@ -16,18 +23,27 @@ run_step() {
   echo "=== ${title} ==="
   echo "${cmd}"
   echo
+  log_action "START | ${title} | ${cmd}"
   if (
     cd "${SERVER_DIR}"
     eval "${cmd}"
   ); then
     echo
     echo "Done: ${title}"
+    log_action "DONE  | ${title}"
+    echo
+    echo "=== Refreshed Status ==="
+    bash ./scripts/show_active_modes.sh | tee -a "${ACTION_LOG}"
     return 0
   else
     local exit_code=$?
     echo
     echo "Failed: ${title} (exit=${exit_code})"
     echo "You can retry this action from the menu."
+    log_action "FAIL  | ${title} | exit=${exit_code}"
+    echo
+    echo "=== Refreshed Status ==="
+    bash ./scripts/show_active_modes.sh | tee -a "${ACTION_LOG}"
     return 0
   fi
 }
@@ -63,6 +79,10 @@ start_frontend_direct() {
   echo
   echo "Frontend launch sent."
   echo "Frontend log: ${frontend_log}"
+  log_action "FRONTEND_DIRECT | local | log=${frontend_log}"
+  echo
+  echo "=== Refreshed Status ==="
+  bash ./scripts/show_active_modes.sh | tee -a "${ACTION_LOG}"
 }
 
 print_menu() {
