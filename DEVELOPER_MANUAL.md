@@ -38,7 +38,12 @@
 - בהרמות app מהתפריט, הטרמינלים נפתחים בתוך VS Code בלבד (לא בחלון Terminal חיצוני)
 
 חשוב:
-- בתפריט, פעולות `1` ו־`3` שולחות בקשה להפעלת VS Code Task ישירות.
+- בתפריט, פעולה `1` קודם מרימה infra ישירות ואז מפעילה Tasks ל־app.
+- בתפריט, פעולה `3` מפעילה Tasks ל־app בלבד.
+- אם ה־Task trigger לא נתפס, יש fallback אוטומטי שמרים backend/frontend ברקע.
+- לוגים של fallback:
+  - backend: `/Users/dwrwnlwy/projects/BB_server/.logs/backend-menu-fallback.log`
+  - frontend: `/Users/dwrwnlwy/projects/BB_flutter/.logs/frontend-menu-fallback.log`
 - אם לא התחיל אוטומטית תוך כמה שניות, הפעל ידנית מאותו שם דרך `Terminal -> Run Task...`.
 - ברירת מחדל חדשה: לא נפתחים טרמינלים חיצוניים (Terminal.app) אוטומטית.
 - אם תפעיל ידנית `ALLOW_EXTERNAL_TERMINAL=1`, רק אז יתאפשר fallback חיצוני (לא מומלץ).
