@@ -41,7 +41,10 @@
 - בתפריט, פעולה `1` קודם מרימה infra ואז מרימה backend+frontend ישירות.
 - בתפריט, פעולה `3` מרימה backend+frontend ישירות.
 - אין תלות ב־`vscode://command` trigger עבור `1/3`.
-- מצב async מונע timeout שגוי בזמן ההרמה; בודקים מצב אמיתי עם `7` (`Show Active Modes`).
+- אין תלות בהקפצת VS Code כדי להרים app.
+- לוגים של הרמת app מהתפריט:
+  - backend: `/Users/dwrwnlwy/projects/BB_server/.logs/backend-menu.log`
+  - frontend: `/Users/dwrwnlwy/projects/BB_flutter/.logs/frontend-menu.log`
 - אם לא עלה תוך כמה שניות, בדוק עם `7` (Show Active Modes) וחכה עוד רגע.
 - ברירת מחדל חדשה: לא נפתחים טרמינלים חיצוניים (Terminal.app) אוטומטית.
 - אם תפעיל ידנית `ALLOW_EXTERNAL_TERMINAL=1`, רק אז יתאפשר fallback חיצוני (לא מומלץ).

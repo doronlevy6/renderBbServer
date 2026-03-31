@@ -5,6 +5,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 FLUTTER_DIR="${SERVER_DIR}/../BB_flutter"
+BACKEND_PORT="${BACKEND_PORT:-9090}"
+FRONTEND_PORT="${FRONTEND_PORT:-7357}"
 
 run_step() {
   local title="$1"
@@ -26,6 +28,51 @@ run_step() {
     echo "Failed: ${title} (exit=${exit_code})"
     echo "You can retry this action from the menu."
     return 0
+  fi
+}
+
+is_port_listening() {
+  local port="$1"
+  lsof -nP -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1
+}
+
+wait_for_app_ports() {
+  local timeout_seconds="${1:-20}"
+  local waited=0
+  while (( waited < timeout_seconds )); do
+    if is_port_listening "${BACKEND_PORT}" && is_port_listening "${FRONTEND_PORT}"; then
+      return 0
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  return 1
+}
+
+start_app_direct() {
+  local backend_log="${SERVER_DIR}/.logs/backend-menu.log"
+  local frontend_log="${FLUTTER_DIR}/.logs/frontend-menu.log"
+
+  mkdir -p "${SERVER_DIR}/.logs" "${FLUTTER_DIR}/.logs"
+
+  (
+    cd "${SERVER_DIR}"
+    ./scripts/run_backend_terminal.sh dev "${SERVER_DIR}/.env.devdb" "${BACKEND_PORT}" "${SERVER_DIR}/.logs/backend.meta" "${SERVER_DIR}/.logs/backend-dev.pid" "${SERVER_DIR}" > "${backend_log}" 2>&1 &
+  )
+
+  (
+    cd "${SERVER_DIR}"
+    ./scripts/run_frontend_terminal.sh local LOCAL "${FRONTEND_PORT}" "${FLUTTER_DIR}/.logs/frontend.meta" "${FLUTTER_DIR}/.logs/flutter-web-local.pid" "${FLUTTER_DIR}" > "${frontend_log}" 2>&1 &
+  )
+
+  echo
+  echo "App launch sent."
+  echo "Backend log: ${backend_log}"
+  echo "Frontend log: ${frontend_log}"
+  if wait_for_app_ports 20; then
+    echo "Backend + Frontend are UP."
+  else
+    echo "Still starting. Run option 7 to verify current status."
   fi
 }
 
@@ -58,8 +105,9 @@ main() {
     case "${choice}" in
       1)
         run_step \
-          "Start Full Dev Environment" \
-          "OPEN_PGADMIN_UI=1 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=1 APP_START_ASYNC=1 TERMINAL_TARGET=vscode ALLOW_EXTERNAL_TERMINAL=0 ./scripts/start_full_dev_environment.sh"
+          "Start Infra Only" \
+          "OPEN_PGADMIN_UI=1 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh"
+        start_app_direct
         ;;
       2)
         run_step \
@@ -67,9 +115,7 @@ main() {
           "OPEN_PGADMIN_UI=1 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh"
         ;;
       3)
-        run_step \
-          "Start App Only (FE local + BE dev)" \
-          "OPEN_PGADMIN_UI=0 START_PGADMIN_CONTAINER=0 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=1 APP_START_ASYNC=1 TERMINAL_TARGET=vscode ALLOW_EXTERNAL_TERMINAL=0 ./scripts/start_full_dev_environment.sh"
+        start_app_direct
         ;;
       4)
         run_step \
