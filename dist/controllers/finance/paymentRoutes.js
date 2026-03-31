@@ -16,15 +16,12 @@ exports.registerPaymentRoutes = registerPaymentRoutes;
 const userModel_1 = __importDefault(require("../../models/userModel"));
 const verifyToken_1 = require("../verifyToken");
 const emailService_1 = require("../../services/emailService");
-function resolveTeamId(req) {
-    var _a;
-    const teamId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.team_id;
-    return typeof teamId === 'number' ? teamId : null;
-}
+const authz_1 = require("../authz");
 function registerPaymentRoutes(router) {
-    router.post('/add-payment', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
+    // Payment creation is restricted to managers only.
+    router.post('/add-payment', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
         const { username, amount, method, notes, date, client_payment_id } = req.body;
-        const team_id = resolveTeamId(req);
+        const team_id = (0, authz_1.getTeamId)(req);
         const normalizedClientPaymentId = typeof client_payment_id === 'string' && client_payment_id.trim() !== ''
             ? client_payment_id.trim()
             : null;
@@ -35,6 +32,11 @@ function registerPaymentRoutes(router) {
             return;
         }
         try {
+            const userRes = yield userModel_1.default.query('SELECT email FROM users WHERE username = $1 AND team_id = $2 LIMIT 1', [username, team_id]);
+            if (userRes.rows.length === 0) {
+                res.status(404).json({ success: false, message: 'Player not found in team' });
+                return;
+            }
             if (normalizedClientPaymentId) {
                 const existingPayment = yield userModel_1.default.query('SELECT payment_id FROM payments WHERE team_id = $1 AND client_payment_id = $2 LIMIT 1', [team_id, normalizedClientPaymentId]);
                 if (existingPayment.rows.length > 0) {
@@ -70,8 +72,7 @@ function registerPaymentRoutes(router) {
             yield userModel_1.default.query(paymentQuery, paymentValues);
             // Send payment confirmation email
             try {
-                const userRes = yield userModel_1.default.query('SELECT email FROM users WHERE username = $1 AND team_id = $2 LIMIT 1', [username, team_id]);
-                if (userRes.rows.length > 0 && userRes.rows[0].email) {
+                if (userRes.rows[0].email) {
                     yield (0, emailService_1.sendPaymentConfirmationEmail)(userRes.rows[0].email, username, Number(amount), method, paymentDate);
                 }
             }
@@ -104,9 +105,9 @@ function registerPaymentRoutes(router) {
             res.status(500).json({ success: false, message: 'Internal server error' });
         }
     }));
-    router.delete('/delete-payment/:payment_id', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
+    router.delete('/delete-payment/:payment_id', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
         const { payment_id } = req.params;
-        const team_id = resolveTeamId(req);
+        const team_id = (0, authz_1.getTeamId)(req);
         if (!team_id) {
             res
                 .status(400)

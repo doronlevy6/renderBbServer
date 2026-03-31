@@ -1,12 +1,12 @@
 import { Request, Response, Router } from 'express';
 import pool from '../../models/userModel';
 import { verifyToken } from '../verifyToken';
+import { getTeamId, requireManager } from '../authz';
 
 export function registerFinanceSettingsRoutes(router: Router): void {
   // New endpoint to just get settings for team (for settings page)
-  router.get('/team-settings', verifyToken, async (req: Request, res: Response) => {
-    // @ts-ignore
-    const team_id = req.user?.team_id;
+  router.get('/team-settings', verifyToken, requireManager, async (req: Request, res: Response) => {
+    const team_id = getTeamId(req);
     if (!team_id) {
       res.status(400).json({ success: false, message: 'No team id' });
       return;
@@ -21,10 +21,9 @@ export function registerFinanceSettingsRoutes(router: Router): void {
     }
   });
 
-  router.put('/update-team-settings', verifyToken, async (req: Request, res: Response) => {
+  router.put('/update-team-settings', verifyToken, requireManager, async (req: Request, res: Response) => {
     const { default_game_cost } = req.body;
-    // @ts-ignore
-    const team_id = req.user?.team_id;
+    const team_id = getTeamId(req);
 
     if (!team_id) {
       res.status(400).json({ success: false, message: 'Team identification failed' });
@@ -40,10 +39,22 @@ export function registerFinanceSettingsRoutes(router: Router): void {
     }
   });
 
-  router.put('/update-user-financial-settings', verifyToken, async (req: Request, res: Response) => {
+  router.put('/update-user-financial-settings', verifyToken, requireManager, async (req: Request, res: Response) => {
     const { username, custom_game_cost } = req.body;
+    const team_id = getTeamId(req);
+    if (!team_id) {
+      res.status(400).json({ success: false, message: 'Team identification failed' });
+      return;
+    }
     try {
-      await pool.query('UPDATE users SET custom_game_cost = $1 WHERE username = $2', [custom_game_cost, username]);
+      const updateRes = await pool.query(
+        'UPDATE users SET custom_game_cost = $1 WHERE username = $2 AND team_id = $3',
+        [custom_game_cost, username, team_id]
+      );
+      if (updateRes.rowCount === 0) {
+        res.status(404).json({ success: false, message: 'Player not found in team' });
+        return;
+      }
       res.status(200).json({ success: true, message: 'User settings updated' });
     } catch (error: any) {
       console.error('Error updating user settings:', error);

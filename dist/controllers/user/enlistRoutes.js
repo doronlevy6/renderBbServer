@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerEnlistRoutes = registerEnlistRoutes;
 const userService_1 = __importDefault(require("../../services/userService"));
 const verifyToken_1 = require("../verifyToken");
+const authz_1 = require("../authz");
 function registerEnlistRoutes(router) {
     // Team usernames list for authenticated user team.
     router.get('/usernames', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -45,8 +46,8 @@ function registerEnlistRoutes(router) {
             res.status(500).json({ success: false, message: err.message });
         }
     }));
-    // Remove players from enlist list (kept without token middleware for backward compatibility).
-    router.post('/delete-enlist', (req, res) => __awaiter(this, void 0, void 0, function* () {
+    // Remove players from enlist list (manager-only).
+    router.post('/delete-enlist', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
         try {
             const { usernames } = req.body;
             yield userService_1.default.deleteEnlistedUsers(usernames);
@@ -57,7 +58,7 @@ function registerEnlistRoutes(router) {
         }
     }));
     // Add players to enlist list for authenticated team.
-    router.post('/enlist-users', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
+    router.post('/enlist-users', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
         var _a;
         try {
             const { usernames } = req.body;

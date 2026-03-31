@@ -1,6 +1,7 @@
 import { Request, Response, Router } from 'express';
 import userService from '../../services/userService';
 import { verifyToken } from '../verifyToken';
+import { requireManager } from '../authz';
 
 export function registerManagementRoutes(router: Router): void {
   // Public list of teams for registration/login flows.
@@ -14,7 +15,7 @@ export function registerManagementRoutes(router: Router): void {
   });
 
   // Manager view: list all players in the requester's team.
-  router.get('/players', verifyToken, async (req: Request, res: Response) => {
+  router.get('/players', verifyToken, requireManager, async (req: Request, res: Response) => {
     try {
       // @ts-ignore
       const teamId = req.user?.team_id || 1;
@@ -26,7 +27,7 @@ export function registerManagementRoutes(router: Router): void {
   });
 
   // Manager action: add a new player into requester's team.
-  router.post('/add-player', verifyToken, async (req: Request, res: Response) => {
+  router.post('/add-player', verifyToken, requireManager, async (req: Request, res: Response) => {
     const { username, password, email } = req.body as {
       username?: string;
       password?: string;
@@ -82,10 +83,17 @@ export function registerManagementRoutes(router: Router): void {
   router.delete(
     '/delete-player/:username',
     verifyToken,
+    requireManager,
     async (req: Request, res: Response) => {
       const { username } = req.params;
+      // @ts-ignore
+      const requesterTeamId = req.user?.team_id;
       try {
-        await userService.deleteUser(username);
+        if (!requesterTeamId) {
+          res.status(400).json({ success: false, message: 'Team identification failed' });
+          return;
+        }
+        await userService.deleteUser(username, requesterTeamId);
         res
           .status(200)
           .json({ success: true, message: 'Player deleted successfully' });
@@ -99,15 +107,23 @@ export function registerManagementRoutes(router: Router): void {
   router.put(
     '/update-player/:username',
     verifyToken,
+    requireManager,
     async (req: Request, res: Response) => {
       const { username } = req.params;
       const { newUsername, newEmail, newPassword } = req.body;
+      // @ts-ignore
+      const requesterTeamId = req.user?.team_id;
       try {
+        if (!requesterTeamId) {
+          res.status(400).json({ success: false, message: 'Team identification failed' });
+          return;
+        }
         const user = await userService.updateUser(
           username,
           newUsername,
           newEmail,
-          newPassword
+          newPassword,
+          requesterTeamId
         );
         res.status(200).json({ success: true, user });
       } catch (err: any) {
@@ -120,6 +136,7 @@ export function registerManagementRoutes(router: Router): void {
   router.put(
     '/update-player-roles',
     verifyToken,
+    requireManager,
     async (req: Request, res: Response) => {
       const { roleUpdates } = req.body as {
         roleUpdates: Array<{ username: string; role: string }>;
@@ -128,6 +145,8 @@ export function registerManagementRoutes(router: Router): void {
       try {
         // @ts-ignore
         const requesterRole = req.user?.role;
+        // @ts-ignore
+        const requesterTeamId = req.user?.team_id;
 
         if (requesterRole !== 'manager') {
           res.status(403).json({
@@ -137,8 +156,17 @@ export function registerManagementRoutes(router: Router): void {
           return;
         }
 
+        if (!requesterTeamId) {
+          res.status(400).json({ success: false, message: 'Team identification failed' });
+          return;
+        }
+
         for (const update of roleUpdates) {
-          await userService.updatePlayerRole(update.username, update.role);
+          await userService.updatePlayerRole(
+            update.username,
+            update.role,
+            requesterTeamId
+          );
         }
 
         res

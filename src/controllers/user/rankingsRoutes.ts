@@ -2,6 +2,7 @@ import { Request, Response, Router } from 'express';
 import userService from '../../services/userService';
 import balancedTeamsService from '../../services/balancedTeamsService';
 import { verifyToken } from '../verifyToken';
+import { getUsername, isManager } from '../authz';
 
 interface Ranking {
   username: string;
@@ -73,8 +74,19 @@ export function registerRankingRoutes(router: Router): void {
   // Fetch rankings submitted by a specific user.
   router.get(
     '/rankings/:username',
+    verifyToken,
     async (req: Request<{ username: string }>, res: Response) => {
       const { username } = req.params;
+      const requester = getUsername(req);
+      const manager = isManager(req);
+      if (!requester) {
+        res.status(400).json({ success: false, message: 'Missing requester identity' });
+        return;
+      }
+      if (!manager && requester !== username) {
+        res.status(403).json({ success: false, message: 'Not authorized to view this ranking' });
+        return;
+      }
       try {
         const rankings = await userService.getPlayerRankings(username);
         res.status(200).json({ success: true, rankings });

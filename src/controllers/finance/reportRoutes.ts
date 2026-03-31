@@ -1,10 +1,24 @@
 import { Request, Response, Router } from 'express';
 import pool from '../../models/userModel';
 import { verifyToken } from '../verifyToken';
+import { getTeamId, getUsername, isManager, requireManager } from '../authz';
 
 export function registerFinanceReportRoutes(router: Router): void {
+  // Financial details: manager can read any team member, player can read only self.
   router.get('/player-financials/:username', verifyToken, async (req: Request, res: Response) => {
     const { username } = req.params;
+    const team_id = getTeamId(req);
+    const requester = getUsername(req);
+    const manager = isManager(req);
+
+    if (!team_id || !requester) {
+      res.status(400).json({ success: false, message: 'Team identification failed' });
+      return;
+    }
+    if (!manager && requester !== username) {
+      res.status(403).json({ success: false, message: 'Not authorized to view this player' });
+      return;
+    }
 
     try {
       // 1. Get Games Attended
@@ -12,19 +26,19 @@ export function registerFinanceReportRoutes(router: Router): void {
             SELECT ga.attendance_id, ga.applied_cost, ga.adjustment_note, g.date, g.game_id, g.notes
             FROM game_attendance ga
             JOIN games g ON ga.game_id = g.game_id
-            WHERE ga.username = $1
+            WHERE ga.username = $1 AND g.team_id = $2
             ORDER BY g.date DESC
         `;
-      const attendanceRes = await pool.query(attendanceQuery, [username]);
+      const attendanceRes = await pool.query(attendanceQuery, [username, team_id]);
 
       // 2. Get Payments Made
       const paymentsQuery = `
             SELECT payment_id, amount, method, date, notes
             FROM payments
-            WHERE username = $1
+            WHERE username = $1 AND team_id = $2
             ORDER BY date DESC
         `;
-      const paymentsRes = await pool.query(paymentsQuery, [username]);
+      const paymentsRes = await pool.query(paymentsQuery, [username, team_id]);
 
       // 3. Calculate Balance
       const totalCost = attendanceRes.rows.reduce((sum: number, record: any) => sum + record.applied_cost, 0);
@@ -32,7 +46,10 @@ export function registerFinanceReportRoutes(router: Router): void {
       const balance = totalPaid - totalCost; // Positive = Credit, Negative = Debt
 
       // 4. Get User Settings (Custom Cost)
-      const userRes = await pool.query('SELECT custom_game_cost FROM users WHERE username = $1', [username]);
+      const userRes = await pool.query(
+        'SELECT custom_game_cost FROM users WHERE username = $1 AND team_id = $2',
+        [username, team_id]
+      );
       const customCost = userRes.rows[0]?.custom_game_cost || null;
 
       res.status(200).json({
@@ -55,8 +72,18 @@ export function registerFinanceReportRoutes(router: Router): void {
   // Lightweight endpoint for player balance (for Welcome Page)
   router.get('/player-balance/:username', verifyToken, async (req: Request, res: Response) => {
     const { username } = req.params;
-    // @ts-ignore
-    const team_id = req.user?.team_id;
+    const team_id = getTeamId(req);
+    const requester = getUsername(req);
+    const manager = isManager(req);
+
+    if (!team_id || !requester) {
+      res.status(400).json({ success: false, message: 'Team identification failed' });
+      return;
+    }
+    if (!manager && requester !== username) {
+      res.status(403).json({ success: false, message: 'Not authorized to view this player' });
+      return;
+    }
 
     try {
       // 1. Get total game costs
@@ -79,7 +106,10 @@ export function registerFinanceReportRoutes(router: Router): void {
       const totalPaid = parseInt(payRes.rows[0].total_paid);
 
       // 3. Get player's cost per game
-      const userRes = await pool.query('SELECT custom_game_cost FROM users WHERE username = $1', [username]);
+      const userRes = await pool.query(
+        'SELECT custom_game_cost FROM users WHERE username = $1 AND team_id = $2',
+        [username, team_id]
+      );
       const customCost = userRes.rows[0]?.custom_game_cost;
 
       // If no custom cost, get team default
@@ -107,12 +137,18 @@ export function registerFinanceReportRoutes(router: Router): void {
     }
   });
 
-  router.get('/team-financial-summary/:team_id', verifyToken, async (req: Request, res: Response) => {
+  // Team financial summary is manager-only.
+  router.get('/team-financial-summary/:team_id', verifyToken, requireManager, async (req: Request, res: Response) => {
     const requestedTeamId = Number(req.params.team_id);
-    // @ts-ignore
-    const tokenTeamId = req.user?.team_id;
-
-    const team_id = tokenTeamId || requestedTeamId;
+    const team_id = getTeamId(req);
+    if (!team_id) {
+      res.status(400).json({ success: false, message: 'Team identification failed' });
+      return;
+    }
+    if (requestedTeamId && requestedTeamId !== team_id) {
+      res.status(403).json({ success: false, message: 'Not authorized for this team' });
+      return;
+    }
 
     try {
       const usersRes = await pool.query('SELECT username, custom_game_cost FROM users WHERE team_id = $1', [team_id]);
@@ -162,12 +198,18 @@ export function registerFinanceReportRoutes(router: Router): void {
     }
   });
 
-  // NEW: Get full financial history for ALL players in the team (for efficient preloading)
-  router.get('/all-players-history/:team_id', verifyToken, async (req: Request, res: Response) => {
+  // Full team financial history is manager-only.
+  router.get('/all-players-history/:team_id', verifyToken, requireManager, async (req: Request, res: Response) => {
     const requestedTeamId = Number(req.params.team_id);
-    // @ts-ignore
-    const tokenTeamId = req.user?.team_id;
-    const team_id = tokenTeamId || requestedTeamId;
+    const team_id = getTeamId(req);
+    if (!team_id) {
+      res.status(400).json({ success: false, message: 'Team identification failed' });
+      return;
+    }
+    if (requestedTeamId && requestedTeamId !== team_id) {
+      res.status(403).json({ success: false, message: 'Not authorized for this team' });
+      return;
+    }
 
     try {
       const usersRes = await pool.query('SELECT username, custom_game_cost FROM users WHERE team_id = $1', [team_id]);
@@ -184,19 +226,19 @@ export function registerFinanceReportRoutes(router: Router): void {
                 SELECT ga.attendance_id, ga.applied_cost, ga.adjustment_note, g.date, g.game_id, g.notes
                 FROM game_attendance ga
                 JOIN games g ON ga.game_id = g.game_id
-                WHERE ga.username = $1
+                WHERE ga.username = $1 AND g.team_id = $2
                 ORDER BY g.date DESC
             `;
-        const attendanceRes = await pool.query(attendanceQuery, [username]);
+        const attendanceRes = await pool.query(attendanceQuery, [username, team_id]);
 
         // 2. Get Payments Made
         const paymentsQuery = `
                 SELECT payment_id, amount, method, date, notes
                 FROM payments
-                WHERE username = $1
+                WHERE username = $1 AND team_id = $2
                 ORDER BY date DESC
             `;
-        const paymentsRes = await pool.query(paymentsQuery, [username]);
+        const paymentsRes = await pool.query(paymentsQuery, [username, team_id]);
 
         // 3. Calculate Balance
         const totalCost = attendanceRes.rows.reduce((sum: number, record: any) => sum + record.applied_cost, 0);

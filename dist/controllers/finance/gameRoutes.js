@@ -15,12 +15,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerGameRoutes = registerGameRoutes;
 const userModel_1 = __importDefault(require("../../models/userModel"));
 const verifyToken_1 = require("../verifyToken");
+const authz_1 = require("../authz");
 function registerGameRoutes(router) {
-    router.post('/record-game', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
-        var _a;
+    // Game recording is restricted to managers only.
+    router.post('/record-game', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
         const { date, time, enlistedPlayers, base_cost, notes, force_base_cost, specific_player_costs, specific_player_notes, } = req.body;
-        // @ts-ignore
-        const team_id = (_a = req.user) === null || _a === void 0 ? void 0 : _a.team_id;
+        const team_id = (0, authz_1.getTeamId)(req);
         if (!team_id) {
             res.status(400).json({ success: false, message: 'Team identification failed' });
             return;
@@ -96,7 +96,7 @@ function registerGameRoutes(router) {
                     }
                     // Priority 3: Custom Player Settings
                     else {
-                        const userRes = yield userModel_1.default.query('SELECT custom_game_cost FROM users WHERE username = $1', [username]);
+                        const userRes = yield userModel_1.default.query('SELECT custom_game_cost FROM users WHERE username = $1 AND team_id = $2', [username, team_id]);
                         if (userRes.rows.length > 0 && userRes.rows[0].custom_game_cost !== null) {
                             playerCost = userRes.rows[0].custom_game_cost;
                         }
@@ -114,10 +114,25 @@ function registerGameRoutes(router) {
             res.status(500).json({ success: false, message: 'Internal server error' });
         }
     }));
-    router.delete('/delete-attendance/:attendance_id', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
+    router.delete('/delete-attendance/:attendance_id', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
         const { attendance_id } = req.params;
+        const team_id = (0, authz_1.getTeamId)(req);
+        if (!team_id) {
+            res.status(400).json({ success: false, message: 'Team identification failed' });
+            return;
+        }
         try {
-            yield userModel_1.default.query('DELETE FROM game_attendance WHERE attendance_id = $1', [attendance_id]);
+            const deleteRes = yield userModel_1.default.query(`
+          DELETE FROM game_attendance ga
+          USING games g
+          WHERE ga.attendance_id = $1
+            AND ga.game_id = g.game_id
+            AND g.team_id = $2
+        `, [attendance_id, team_id]);
+            if (deleteRes.rowCount === 0) {
+                res.status(404).json({ success: false, message: 'Attendance record not found' });
+                return;
+            }
             res.status(200).json({ success: true, message: 'Game record deleted for player' });
         }
         catch (error) {
@@ -126,10 +141,8 @@ function registerGameRoutes(router) {
         }
     }));
     // NEW: Get list of game sessions for team
-    router.get('/game-sessions', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
-        var _a;
-        // @ts-ignore
-        const team_id = (_a = req.user) === null || _a === void 0 ? void 0 : _a.team_id;
+    router.get('/game-sessions', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
+        const team_id = (0, authz_1.getTeamId)(req);
         if (!team_id) {
             res.status(400).json({ success: false, message: 'No team id' });
             return;
@@ -154,11 +167,9 @@ function registerGameRoutes(router) {
         }
     }));
     // NEW: Get players in a specific game session
-    router.get('/game-session-players/:game_session_id', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
-        var _a;
+    router.get('/game-session-players/:game_session_id', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
         const { game_session_id } = req.params;
-        // @ts-ignore
-        const team_id = (_a = req.user) === null || _a === void 0 ? void 0 : _a.team_id;
+        const team_id = (0, authz_1.getTeamId)(req);
         if (!team_id) {
             res.status(400).json({ success: false, message: 'No team id' });
             return;

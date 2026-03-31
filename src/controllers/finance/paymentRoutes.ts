@@ -2,22 +2,13 @@ import { Request, Response, Router } from 'express';
 import pool from '../../models/userModel';
 import { verifyToken } from '../verifyToken';
 import { sendPaymentConfirmationEmail } from '../../services/emailService';
-
-type AuthenticatedRequest = Request & {
-  user?: {
-    team_id?: number;
-  };
-};
-
-function resolveTeamId(req: Request): number | null {
-  const teamId = (req as AuthenticatedRequest).user?.team_id;
-  return typeof teamId === 'number' ? teamId : null;
-}
+import { getTeamId, requireManager } from '../authz';
 
 export function registerPaymentRoutes(router: Router): void {
-  router.post('/add-payment', verifyToken, async (req: Request, res: Response) => {
+  // Payment creation is restricted to managers only.
+  router.post('/add-payment', verifyToken, requireManager, async (req: Request, res: Response) => {
     const { username, amount, method, notes, date, client_payment_id } = req.body;
-    const team_id = resolveTeamId(req);
+    const team_id = getTeamId(req);
     const normalizedClientPaymentId =
       typeof client_payment_id === 'string' && client_payment_id.trim() !== ''
         ? client_payment_id.trim()
@@ -31,6 +22,15 @@ export function registerPaymentRoutes(router: Router): void {
     }
 
     try {
+      const userRes = await pool.query(
+        'SELECT email FROM users WHERE username = $1 AND team_id = $2 LIMIT 1',
+        [username, team_id]
+      );
+      if (userRes.rows.length === 0) {
+        res.status(404).json({ success: false, message: 'Player not found in team' });
+        return;
+      }
+
       if (normalizedClientPaymentId) {
         const existingPayment = await pool.query(
           'SELECT payment_id FROM payments WHERE team_id = $1 AND client_payment_id = $2 LIMIT 1',
@@ -73,11 +73,7 @@ export function registerPaymentRoutes(router: Router): void {
 
       // Send payment confirmation email
       try {
-        const userRes = await pool.query(
-          'SELECT email FROM users WHERE username = $1 AND team_id = $2 LIMIT 1',
-          [username, team_id]
-        );
-        if (userRes.rows.length > 0 && userRes.rows[0].email) {
+        if (userRes.rows[0].email) {
           await sendPaymentConfirmationEmail(
             userRes.rows[0].email,
             username,
@@ -123,9 +119,10 @@ export function registerPaymentRoutes(router: Router): void {
   router.delete(
     '/delete-payment/:payment_id',
     verifyToken,
+    requireManager,
     async (req: Request, res: Response) => {
       const { payment_id } = req.params;
-      const team_id = resolveTeamId(req);
+      const team_id = getTeamId(req);
 
       if (!team_id) {
         res

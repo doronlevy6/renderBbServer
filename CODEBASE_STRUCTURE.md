@@ -28,6 +28,7 @@ BB_server/
 │  ├─ controllers/
 │  │  ├─ userController.ts
 │  │  ├─ verifyToken.ts
+│  │  ├─ authz.ts                    # manager/self authorization helpers
 │  │  ├─ financeController.ts         # composition בלבד
 │  │  ├─ finance/
 │  │     ├─ paymentRoutes.ts          # add/delete payment + email
@@ -153,7 +154,14 @@ BB_flutter/lib/
 - קבצים: שם שמסביר תפקיד (`paymentRoutes`, `reportRoutes`, `settingsRoutes`).
 - שמות עם typo נשארים כ-bridge בלבד עד ניקוי מלא.
 
-## 6) מצב ריפקטור נוכחי
+## 6) Security Model (נוכחי)
+
+- כל endpoints של תשלומים והגדרות פיננסיות מוגנים עם `verifyToken` + `requireManager`.
+- פעולות ניהול שחקנים (רשימה/הוספה/עריכה/מחיקה/תפקידים) מוגנות מנהל בלבד.
+- קריאות שחקן פיננסיות (`player-balance`, `player-financials`) מותרות למנהל או למשתמש על עצמו בלבד.
+- בדפדפן, עמודי מנהל חוסמים גישה גם ברמת UI עם `Access Denied` אם המשתמש לא מנהל.
+
+## 7) מצב ריפקטור נוכחי
 
 בוצע:
 - פיצול `financeController` למודולים ייעודיים.

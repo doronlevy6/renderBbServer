@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerManagementRoutes = registerManagementRoutes;
 const userService_1 = __importDefault(require("../../services/userService"));
 const verifyToken_1 = require("../verifyToken");
+const authz_1 = require("../authz");
 function registerManagementRoutes(router) {
     // Public list of teams for registration/login flows.
     router.get('/teams', (_req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -27,7 +28,7 @@ function registerManagementRoutes(router) {
         }
     }));
     // Manager view: list all players in the requester's team.
-    router.get('/players', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
+    router.get('/players', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
         var _a;
         try {
             // @ts-ignore
@@ -40,7 +41,7 @@ function registerManagementRoutes(router) {
         }
     }));
     // Manager action: add a new player into requester's team.
-    router.post('/add-player', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
+    router.post('/add-player', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
         var _a, _b;
         const { username, password, email } = req.body;
         try {
@@ -79,10 +80,17 @@ function registerManagementRoutes(router) {
         }
     }));
     // Manager action: delete player by username.
-    router.delete('/delete-player/:username', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
+    router.delete('/delete-player/:username', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
+        var _a;
         const { username } = req.params;
+        // @ts-ignore
+        const requesterTeamId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.team_id;
         try {
-            yield userService_1.default.deleteUser(username);
+            if (!requesterTeamId) {
+                res.status(400).json({ success: false, message: 'Team identification failed' });
+                return;
+            }
+            yield userService_1.default.deleteUser(username, requesterTeamId);
             res
                 .status(200)
                 .json({ success: true, message: 'Player deleted successfully' });
@@ -92,11 +100,18 @@ function registerManagementRoutes(router) {
         }
     }));
     // Manager action: update player identity fields and optional password.
-    router.put('/update-player/:username', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
+    router.put('/update-player/:username', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
+        var _a;
         const { username } = req.params;
         const { newUsername, newEmail, newPassword } = req.body;
+        // @ts-ignore
+        const requesterTeamId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.team_id;
         try {
-            const user = yield userService_1.default.updateUser(username, newUsername, newEmail, newPassword);
+            if (!requesterTeamId) {
+                res.status(400).json({ success: false, message: 'Team identification failed' });
+                return;
+            }
+            const user = yield userService_1.default.updateUser(username, newUsername, newEmail, newPassword, requesterTeamId);
             res.status(200).json({ success: true, user });
         }
         catch (err) {
@@ -104,12 +119,14 @@ function registerManagementRoutes(router) {
         }
     }));
     // Manager action: bulk role updates.
-    router.put('/update-player-roles', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
-        var _a;
+    router.put('/update-player-roles', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
+        var _a, _b;
         const { roleUpdates } = req.body;
         try {
             // @ts-ignore
             const requesterRole = (_a = req.user) === null || _a === void 0 ? void 0 : _a.role;
+            // @ts-ignore
+            const requesterTeamId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.team_id;
             if (requesterRole !== 'manager') {
                 res.status(403).json({
                     success: false,
@@ -117,8 +134,12 @@ function registerManagementRoutes(router) {
                 });
                 return;
             }
+            if (!requesterTeamId) {
+                res.status(400).json({ success: false, message: 'Team identification failed' });
+                return;
+            }
             for (const update of roleUpdates) {
-                yield userService_1.default.updatePlayerRole(update.username, update.role);
+                yield userService_1.default.updatePlayerRole(update.username, update.role, requesterTeamId);
             }
             res
                 .status(200)

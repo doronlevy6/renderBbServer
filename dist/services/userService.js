@@ -206,18 +206,32 @@ class UserService {
         });
     }
     // מחיקת משתמש (שחקן)
-    deleteUser(username) {
+    deleteUser(username, teamId) {
         return __awaiter(this, void 0, void 0, function* () {
             const client = yield userModel_1.default.connect();
             try {
                 yield client.query('BEGIN');
                 const cleanUsername = username.trim();
+                // Validate target user by team scope when teamId is provided.
+                const ownershipCheck = teamId
+                    ? yield client.query('SELECT username FROM users WHERE username = $1 AND team_id = $2', [cleanUsername, teamId])
+                    : yield client.query('SELECT username FROM users WHERE username = $1', [
+                        cleanUsername,
+                    ]);
+                if (ownershipCheck.rows.length === 0) {
+                    throw new Error('User not found in your team');
+                }
                 // Delete from player_rankings (both as rater and rated)
                 yield client.query('DELETE FROM player_rankings WHERE rater_username = $1 OR rated_username = $1', [cleanUsername]);
                 // Delete from next_game_enlistment
                 yield client.query('DELETE FROM next_game_enlistment WHERE username = $1', [cleanUsername]);
                 // Delete from users
-                yield client.query('DELETE FROM users WHERE username = $1', [cleanUsername]);
+                if (teamId) {
+                    yield client.query('DELETE FROM users WHERE username = $1 AND team_id = $2', [cleanUsername, teamId]);
+                }
+                else {
+                    yield client.query('DELETE FROM users WHERE username = $1', [cleanUsername]);
+                }
                 yield client.query('COMMIT');
             }
             catch (err) {
@@ -231,7 +245,7 @@ class UserService {
         });
     }
     // עדכון פרטי משתמש (שחקן)
-    updateUser(currentUsername, newUsername, newEmail, newPassword) {
+    updateUser(currentUsername, newUsername, newEmail, newPassword, teamId) {
         return __awaiter(this, void 0, void 0, function* () {
             const client = yield userModel_1.default.connect();
             try {
@@ -244,7 +258,9 @@ class UserService {
                         throw new Error('Username already exists');
                     }
                     // Get current user details
-                    const currentUserRes = yield client.query('SELECT * FROM users WHERE username = $1', [currentUsername]);
+                    const currentUserRes = teamId
+                        ? yield client.query('SELECT * FROM users WHERE username = $1 AND team_id = $2', [currentUsername, teamId])
+                        : yield client.query('SELECT * FROM users WHERE username = $1', [currentUsername]);
                     if (currentUserRes.rows.length === 0)
                         throw new Error('User not found');
                     const currentUser = currentUserRes.rows[0];
@@ -261,7 +277,12 @@ class UserService {
                     yield client.query('UPDATE player_rankings SET rated_username = $1 WHERE rated_username = $2', [newUsername, currentUsername]);
                     yield client.query('UPDATE next_game_enlistment SET username = $1 WHERE username = $2', [newUsername, currentUsername]);
                     // Delete old user
-                    yield client.query('DELETE FROM users WHERE username = $1', [currentUsername]);
+                    if (teamId) {
+                        yield client.query('DELETE FROM users WHERE username = $1 AND team_id = $2', [currentUsername, teamId]);
+                    }
+                    else {
+                        yield client.query('DELETE FROM users WHERE username = $1', [currentUsername]);
+                    }
                     // Now update the email of the new user to the correct one
                     yield client.query('UPDATE users SET email = $1 WHERE username = $2', [emailToUse, newUsername]);
                     yield client.query('COMMIT');
@@ -269,7 +290,11 @@ class UserService {
                 }
                 else {
                     // Just updating email/password
-                    const result = yield client.query('UPDATE users SET email = COALESCE($1, email), password = COALESCE($2, password) WHERE username = $3 RETURNING *', [newEmail, newPassword, currentUsername]);
+                    const result = yield client.query(teamId
+                        ? 'UPDATE users SET email = COALESCE($1, email), password = COALESCE($2, password) WHERE username = $3 AND team_id = $4 RETURNING *'
+                        : 'UPDATE users SET email = COALESCE($1, email), password = COALESCE($2, password) WHERE username = $3 RETURNING *', teamId
+                        ? [newEmail, newPassword, currentUsername, teamId]
+                        : [newEmail, newPassword, currentUsername]);
                     if (result.rows.length === 0) {
                         throw new Error('User not found');
                     }
@@ -288,14 +313,19 @@ class UserService {
         });
     }
     // Update player role (manager/player)
-    updatePlayerRole(username, role) {
+    updatePlayerRole(username, role, teamId) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                yield userModel_1.default.query('UPDATE users SET role = $1 WHERE username = $2', [role, username]);
+                const updateRes = yield userModel_1.default.query(teamId
+                    ? 'UPDATE users SET role = $1 WHERE username = $2 AND team_id = $3'
+                    : 'UPDATE users SET role = $1 WHERE username = $2', teamId ? [role, username, teamId] : [role, username]);
+                if (updateRes.rowCount === 0) {
+                    throw new Error('User not found in your team');
+                }
             }
             catch (err) {
                 console.error(err);
-                throw new Error('Failed to update player role');
+                throw new Error(err.message || 'Failed to update player role');
             }
         });
     }

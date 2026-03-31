@@ -1,6 +1,7 @@
 import { Request, Response, Router } from 'express';
 import userService from '../../services/userService';
 import { verifyToken } from '../verifyToken';
+import { requireManager } from '../authz';
 
 interface DeleteEnlistRequestBody {
   usernames: string[];
@@ -41,8 +42,8 @@ export function registerEnlistRoutes(router: Router): void {
     }
   });
 
-  // Remove players from enlist list (kept without token middleware for backward compatibility).
-  router.post('/delete-enlist', async (req: Request, res: Response) => {
+  // Remove players from enlist list (manager-only).
+  router.post('/delete-enlist', verifyToken, requireManager, async (req: Request, res: Response) => {
     try {
       const { usernames } = req.body as DeleteEnlistRequestBody;
       await userService.deleteEnlistedUsers(usernames);
@@ -56,6 +57,7 @@ export function registerEnlistRoutes(router: Router): void {
   router.post(
     '/enlist-users',
     verifyToken,
+    requireManager,
     async (req: Request, res: Response) => {
       try {
         const { usernames } = req.body as EnlistUsersRequestBody;

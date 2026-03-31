@@ -16,6 +16,7 @@ exports.registerRankingRoutes = registerRankingRoutes;
 const userService_1 = __importDefault(require("../../services/userService"));
 const balancedTeamsService_1 = __importDefault(require("../../services/balancedTeamsService"));
 const verifyToken_1 = require("../verifyToken");
+const authz_1 = require("../authz");
 function registerRankingRoutes(router) {
     // Save a player's rankings submission for the authenticated team.
     router.post('/rankings', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -50,8 +51,18 @@ function registerRankingRoutes(router) {
         }
     }));
     // Fetch rankings submitted by a specific user.
-    router.get('/rankings/:username', (req, res) => __awaiter(this, void 0, void 0, function* () {
+    router.get('/rankings/:username', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
         const { username } = req.params;
+        const requester = (0, authz_1.getUsername)(req);
+        const manager = (0, authz_1.isManager)(req);
+        if (!requester) {
+            res.status(400).json({ success: false, message: 'Missing requester identity' });
+            return;
+        }
+        if (!manager && requester !== username) {
+            res.status(403).json({ success: false, message: 'Not authorized to view this ranking' });
+            return;
+        }
         try {
             const rankings = yield userService_1.default.getPlayerRankings(username);
             res.status(200).json({ success: true, rankings });

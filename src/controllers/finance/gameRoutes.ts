@@ -1,9 +1,11 @@
 import { Request, Response, Router } from 'express';
 import pool from '../../models/userModel';
 import { verifyToken } from '../verifyToken';
+import { getTeamId, requireManager } from '../authz';
 
 export function registerGameRoutes(router: Router): void {
-  router.post('/record-game', verifyToken, async (req: Request, res: Response) => {
+  // Game recording is restricted to managers only.
+  router.post('/record-game', verifyToken, requireManager, async (req: Request, res: Response) => {
     const {
       date,
       time,
@@ -14,8 +16,7 @@ export function registerGameRoutes(router: Router): void {
       specific_player_costs,
       specific_player_notes,
     } = req.body;
-    // @ts-ignore
-    const team_id = req.user?.team_id;
+    const team_id = getTeamId(req);
 
     if (!team_id) {
       res.status(400).json({ success: false, message: 'Team identification failed' });
@@ -105,7 +106,10 @@ export function registerGameRoutes(router: Router): void {
           }
           // Priority 3: Custom Player Settings
           else {
-            const userRes = await pool.query('SELECT custom_game_cost FROM users WHERE username = $1', [username]);
+            const userRes = await pool.query(
+              'SELECT custom_game_cost FROM users WHERE username = $1 AND team_id = $2',
+              [username, team_id]
+            );
             if (userRes.rows.length > 0 && userRes.rows[0].custom_game_cost !== null) {
               playerCost = userRes.rows[0].custom_game_cost;
             }
@@ -128,10 +132,28 @@ export function registerGameRoutes(router: Router): void {
     }
   });
 
-  router.delete('/delete-attendance/:attendance_id', verifyToken, async (req: Request, res: Response) => {
+  router.delete('/delete-attendance/:attendance_id', verifyToken, requireManager, async (req: Request, res: Response) => {
     const { attendance_id } = req.params;
+    const team_id = getTeamId(req);
+    if (!team_id) {
+      res.status(400).json({ success: false, message: 'Team identification failed' });
+      return;
+    }
     try {
-      await pool.query('DELETE FROM game_attendance WHERE attendance_id = $1', [attendance_id]);
+      const deleteRes = await pool.query(
+        `
+          DELETE FROM game_attendance ga
+          USING games g
+          WHERE ga.attendance_id = $1
+            AND ga.game_id = g.game_id
+            AND g.team_id = $2
+        `,
+        [attendance_id, team_id]
+      );
+      if (deleteRes.rowCount === 0) {
+        res.status(404).json({ success: false, message: 'Attendance record not found' });
+        return;
+      }
       res.status(200).json({ success: true, message: 'Game record deleted for player' });
     } catch (error: any) {
       console.error('Error deleting attendance:', error);
@@ -140,9 +162,8 @@ export function registerGameRoutes(router: Router): void {
   });
 
   // NEW: Get list of game sessions for team
-  router.get('/game-sessions', verifyToken, async (req: Request, res: Response) => {
-    // @ts-ignore
-    const team_id = req.user?.team_id;
+  router.get('/game-sessions', verifyToken, requireManager, async (req: Request, res: Response) => {
+    const team_id = getTeamId(req);
     if (!team_id) {
       res.status(400).json({ success: false, message: 'No team id' });
       return;
@@ -172,10 +193,9 @@ export function registerGameRoutes(router: Router): void {
   });
 
   // NEW: Get players in a specific game session
-  router.get('/game-session-players/:game_session_id', verifyToken, async (req: Request, res: Response) => {
+  router.get('/game-session-players/:game_session_id', verifyToken, requireManager, async (req: Request, res: Response) => {
     const { game_session_id } = req.params;
-    // @ts-ignore
-    const team_id = req.user?.team_id;
+    const team_id = getTeamId(req);
 
     if (!team_id) {
       res.status(400).json({ success: false, message: 'No team id' });
