@@ -71,7 +71,8 @@ main() {
     status="stopped"
   fi
 
-  local cfg_front_mode cfg_back_mode cfg_app_env cfg_env_file cfg_ts
+  local cfg_status cfg_front_mode cfg_back_mode cfg_app_env cfg_env_file cfg_ts
+  cfg_status="$(read_mode_key "Status")"
   cfg_front_mode="$(read_mode_key "Frontend API Mode")"
   cfg_back_mode="$(read_mode_key "Backend DB Mode")"
   cfg_app_env="$(read_mode_key "Frontend APP_ENV")"
@@ -83,6 +84,7 @@ main() {
   echo "LIVE Backend (port ${BACKEND_PORT}): $(state_word "${backend_up}")"
   echo "LIVE DB Container (${DB_CONTAINER}): $(state_word "${db_up}")"
   echo "LIVE pgAdmin Container (${PGADMIN_CONTAINER}): $(state_word "${pgadmin_up}")"
+  echo "Configured Status: ${cfg_status}"
   echo "Configured Frontend API Mode: ${cfg_front_mode}"
   echo "Configured Backend DB Mode: ${cfg_back_mode}"
   echo "Configured Frontend APP_ENV: ${cfg_app_env}"

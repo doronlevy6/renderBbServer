@@ -9,6 +9,7 @@ META_FILE="${4:?meta file is required}"
 PID_FILE="${5:?pid file is required}"
 FLUTTER_DIR="${6:?flutter dir is required}"
 OPEN_FRONTEND_UI="${OPEN_FRONTEND_UI:-1}"
+LOG_FILE="$(dirname "${META_FILE}")/frontend-runtime.log"
 
 is_port_listening() {
   lsof -nP -iTCP:"${PORT}" -sTCP:LISTEN >/dev/null 2>&1
@@ -43,11 +44,16 @@ EOF
 
 echo "$$" > "${PID_FILE}"
 
+# Mirror terminal output to a stable log file for post-mortem debugging.
+exec > >(tee -a "${LOG_FILE}") 2>&1
+
 printf '\033]1;BB Frontend (%s)\007' "${API_MODE}"
 clear >/dev/null 2>&1 || true
 echo "=== BB Frontend (${API_MODE}) ==="
 echo "APP_ENV=${APP_ENV}"
 echo "Port=${PORT}"
+echo "Log=${LOG_FILE}"
+echo "StartedAt=$(date +"%Y-%m-%d %H:%M:%S %Z")"
 echo
 
 # Open the app only after the web server port is truly listening.

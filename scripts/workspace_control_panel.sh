@@ -66,25 +66,6 @@ wait_for_app_ports() {
   return 1
 }
 
-start_frontend_direct() {
-  local frontend_log="${FLUTTER_DIR}/.logs/frontend-menu.log"
-
-  mkdir -p "${FLUTTER_DIR}/.logs"
-
-  (
-    cd "${SERVER_DIR}"
-    ./scripts/run_frontend_terminal.sh local LOCAL "${FRONTEND_PORT}" "${FLUTTER_DIR}/.logs/frontend.meta" "${FLUTTER_DIR}/.logs/flutter-web-local.pid" "${FLUTTER_DIR}" > "${frontend_log}" 2>&1 &
-  )
-
-  echo
-  echo "Frontend launch sent."
-  echo "Frontend log: ${frontend_log}"
-  log_action "FRONTEND_DIRECT | local | log=${frontend_log}"
-  echo
-  echo "=== Refreshed Status ==="
-  bash ./scripts/show_active_modes.sh | tee -a "${ACTION_LOG}"
-}
-
 print_menu() {
   cat <<EOF
 
@@ -102,7 +83,6 @@ print_menu() {
  9) Refresh Dev DB From Prod
 10) Deploy Web to GitHub Pages
 11) Deploy Server to Production (main)
-12) Start Frontend Only (Local API)
  0) Exit
 ==============================================================
 EOF
@@ -173,12 +153,6 @@ main() {
         run_step \
           "Deploy Server to Production (main)" \
           "./scripts/merge_server_branch_to_main.sh"
-        ;;
-      12)
-        run_step \
-          "Prepare FE Local API + BE Dev DB" \
-          "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh"
-        start_frontend_direct
         ;;
       0)
         echo "Bye."

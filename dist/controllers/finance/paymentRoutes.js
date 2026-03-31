@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerPaymentRoutes = registerPaymentRoutes;
+const crypto_1 = require("crypto");
 const userModel_1 = __importDefault(require("../../models/userModel"));
 const verifyToken_1 = require("../verifyToken");
 const emailService_1 = require("../../services/emailService");
@@ -20,6 +21,7 @@ const authz_1 = require("../authz");
 function registerPaymentRoutes(router) {
     // Payment creation is restricted to managers only.
     router.post('/add-payment', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
+        const traceId = (0, crypto_1.randomUUID)();
         const { username, amount, method, notes, date, client_payment_id } = req.body;
         const team_id = (0, authz_1.getTeamId)(req);
         const normalizedClientPaymentId = typeof client_payment_id === 'string' && client_payment_id.trim() !== ''
@@ -28,24 +30,25 @@ function registerPaymentRoutes(router) {
         if (!team_id) {
             res
                 .status(400)
-                .json({ success: false, message: 'Team identification failed' });
+                .json({ success: false, message: 'Team identification failed', trace_id: traceId });
             return;
         }
         try {
-            console.log(`[payments:add] team=${team_id} username=${username} amount=${amount} method=${method} clientPaymentId=${normalizedClientPaymentId || 'none'}`);
+            console.log(`[payments:add][${traceId}] team=${team_id} username=${username} amount=${amount} method=${method} clientPaymentId=${normalizedClientPaymentId || 'none'}`);
             const userRes = yield userModel_1.default.query('SELECT email FROM users WHERE username = $1 AND team_id = $2 LIMIT 1', [username, team_id]);
             if (userRes.rows.length === 0) {
-                res.status(404).json({ success: false, message: 'Player not found in team' });
+                res.status(404).json({ success: false, message: 'Player not found in team', trace_id: traceId });
                 return;
             }
             if (normalizedClientPaymentId) {
                 const existingPayment = yield userModel_1.default.query('SELECT payment_id FROM payments WHERE team_id = $1 AND client_payment_id = $2 LIMIT 1', [team_id, normalizedClientPaymentId]);
                 if (existingPayment.rows.length > 0) {
-                    console.log(`[payments:add] duplicate skipped team=${team_id} username=${username} clientPaymentId=${normalizedClientPaymentId}`);
+                    console.log(`[payments:add][${traceId}] duplicate skipped team=${team_id} username=${username} clientPaymentId=${normalizedClientPaymentId}`);
                     res.status(200).json({
                         success: true,
                         message: 'Payment already recorded',
                         duplicate: true,
+                        trace_id: traceId,
                     });
                     return;
                 }
@@ -72,7 +75,7 @@ function registerPaymentRoutes(router) {
                 ]
                 : [username, team_id, amount, method, notes || '', paymentDate];
             yield userModel_1.default.query(paymentQuery, paymentValues);
-            console.log(`[payments:add] inserted team=${team_id} username=${username} amount=${amount} method=${method}`);
+            console.log(`[payments:add][${traceId}] inserted team=${team_id} username=${username} amount=${amount} method=${method}`);
             // Send payment confirmation email
             let emailStatus = 'skipped';
             let emailReason = null;
@@ -84,11 +87,11 @@ function registerPaymentRoutes(router) {
                         ? 'failed'
                         : 'skipped';
                 emailReason = emailResult.reason || null;
-                console.log(`[payments:add] email status team=${team_id} username=${username} status=${emailStatus}${emailReason ? ` reason=${emailReason}` : ''}`);
+                console.log(`[payments:add][${traceId}] email status team=${team_id} username=${username} status=${emailStatus}${emailReason ? ` reason=${emailReason}` : ''}`);
             }
             catch (emailError) {
                 // Log but don't fail the payment if email fails
-                console.error('Failed to send payment confirmation email:', emailError);
+                console.error(`[payments:add][${traceId}] Failed to send payment confirmation email:`, emailError);
                 emailStatus = 'failed';
                 emailReason = 'send_failed';
             }
@@ -99,10 +102,11 @@ function registerPaymentRoutes(router) {
                 message: 'Payment recorded successfully',
                 email_status: emailStatus,
                 email_reason: emailReason,
+                trace_id: traceId,
             });
         }
         catch (error) {
-            console.error(`[payments:add] failed team=${team_id} username=${username} amount=${amount} method=${method}`, error);
+            console.error(`[payments:add][${traceId}] failed team=${team_id} username=${username} amount=${amount} method=${method}`, error);
             if (normalizedClientPaymentId && (error === null || error === void 0 ? void 0 : error.code) === '23505') {
                 try {
                     const duplicatePayment = yield userModel_1.default.query('SELECT payment_id FROM payments WHERE team_id = $1 AND client_payment_id = $2 LIMIT 1', [team_id, normalizedClientPaymentId]);
@@ -111,16 +115,17 @@ function registerPaymentRoutes(router) {
                             success: true,
                             message: 'Payment already recorded',
                             duplicate: true,
+                            trace_id: traceId,
                         });
                         return;
                     }
                 }
                 catch (lookupError) {
-                    console.error('Error resolving duplicate payment replay:', lookupError);
+                    console.error(`[payments:add][${traceId}] Error resolving duplicate payment replay:`, lookupError);
                 }
             }
-            console.error('Error adding payment:', error);
-            res.status(500).json({ success: false, message: 'Internal server error' });
+            console.error(`[payments:add][${traceId}] Error adding payment:`, error);
+            res.status(500).json({ success: false, message: 'Internal server error', trace_id: traceId });
         }
     }));
     router.delete('/delete-payment/:payment_id', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {

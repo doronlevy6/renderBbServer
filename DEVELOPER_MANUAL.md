@@ -38,13 +38,11 @@
 - בהרמות app מהתפריט, הטרמינלים נפתחים בתוך VS Code בלבד (לא בחלון Terminal חיצוני)
 
 חשוב:
-- בתפריט, פעולה `1` קודם מרימה infra ואז מרימה backend+frontend ישירות.
-- בתפריט, פעולה `3` מרימה backend+frontend ישירות.
-- אין תלות ב־`vscode://command` trigger עבור `1/3`.
-- אין תלות בהקפצת VS Code כדי להרים app.
-- לוגים של הרמת app מהתפריט:
-  - backend: `/Users/dwrwnlwy/projects/BB_server/.logs/backend-menu.log`
-  - frontend: `/Users/dwrwnlwy/projects/BB_flutter/.logs/frontend-menu.log`
+- בתפריט, פעולה `1` מרימה Full Dev (תשתיות + אפליקציה).
+- בתפריט, פעולה `3` מרימה App בלבד (backend + frontend).
+- הלוגים הקבועים של runtime:
+  - backend: `/Users/dwrwnlwy/projects/BB_server/.logs/backend-runtime.log`
+  - frontend: `/Users/dwrwnlwy/projects/BB_flutter/.logs/frontend-runtime.log`
 - אם לא עלה תוך כמה שניות, בדוק עם `7` (Show Active Modes) וחכה עוד רגע.
 - ברירת מחדל חדשה: לא נפתחים טרמינלים חיצוניים (Terminal.app) אוטומטית.
 - אם תפעיל ידנית `ALLOW_EXTERNAL_TERMINAL=1`, רק אז יתאפשר fallback חיצוני (לא מומלץ).
@@ -124,6 +122,24 @@
 - הערך בפועל נקבע מה־Task בזמן הרצה (`APP_ENV`, `ENV_FILE`).
 - `Status` מייצג מה רץ כרגע בפועל.
 - `Configured ...` מייצג מה הוגדר בפעם האחרונה (לא בהכרח רץ כרגע).
+
+### 4.1 דיבוג תשלומים (שקוף ומהיר)
+
+כדי להבין "על מה לחצו ומה קרה בפועל" בלי לחפש ידנית בין טרמינלים:
+
+1. הרץ:
+`./scripts/debug_payment_snapshot.sh`
+2. הסקריפט מציג:
+- מצב מערכת חי (`show_active_modes`)
+- הסטטוס האחרון מתוך `active-mode.txt`
+- רצף הפעולות האחרון מה־Control Panel
+- אירועי תשלום מה־backend
+- אירועי תשלום מה־frontend
+- הכל מקבצי runtime
+
+לוגי runtime קבועים:
+- backend: `/Users/dwrwnlwy/projects/BB_server/.logs/backend-runtime.log`
+- frontend: `/Users/dwrwnlwy/projects/BB_flutter/.logs/frontend-runtime.log`
 
 ## 5. החלפת סביבות (בלחיצה)
 
