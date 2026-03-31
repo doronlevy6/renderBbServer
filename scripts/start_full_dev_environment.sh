@@ -111,12 +111,14 @@ open_command_in_vscode_terminal() {
   if ! has_cmd osascript; then
     return 1
   fi
+  if [[ "${TERM_PROGRAM:-}" != "vscode" && -z "${VSCODE_PID:-}" ]]; then
+    return 1
+  fi
 
   applescript_command="${command//\\/\\\\}"
   applescript_command="${applescript_command//\"/\\\"}"
   osascript \
     -e "set the clipboard to \"${applescript_command}\"" \
-    -e "tell application \"Visual Studio Code\" to activate" \
     -e "tell application \"System Events\"" \
     -e "tell process \"Code\"" \
     -e "key code 50 using {control down, shift down}" \
