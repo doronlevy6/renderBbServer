@@ -21,15 +21,6 @@ run_step() {
   echo "Done: ${title}"
 }
 
-trigger_vscode_task() {
-  local encoded_json="$1"
-  local url="vscode://command/workbench.action.tasks.runTask?${encoded_json}"
-  open "${url}" >/dev/null 2>&1 || true
-  echo
-  echo "Requested VS Code task."
-  echo "If it does not start, run it manually from: Terminal -> Run Task..."
-}
-
 print_menu() {
   cat <<'EOF'
 
@@ -58,9 +49,9 @@ main() {
 
     case "${choice}" in
       1)
-        echo
-        echo "=== Start Full Dev Environment (VS Code Task) ==="
-        trigger_vscode_task "%5B%22Start%20Full%20Dev%20Environment%22%5D"
+        run_step \
+          "Start Full Dev Environment" \
+          "OPEN_PGADMIN_UI=1 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=1 TERMINAL_TARGET=vscode ALLOW_EXTERNAL_TERMINAL=0 ./scripts/start_full_dev_environment.sh"
         ;;
       2)
         run_step \
@@ -68,9 +59,9 @@ main() {
           "OPEN_PGADMIN_UI=1 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh"
         ;;
       3)
-        echo
-        echo "=== Start App Only (VS Code Task) ==="
-        trigger_vscode_task "%5B%22Start%20App%20Only%20(FE%20Local%20API%20%2B%20BE%20Dev%20DB)%22%5D"
+        run_step \
+          "Start App Only (FE Local API + BE Dev DB)" \
+          "FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_PGADMIN_CONTAINER=0 START_APP_PROCESSES=1 TERMINAL_TARGET=vscode ALLOW_EXTERNAL_TERMINAL=0 ./scripts/start_full_dev_environment.sh"
         ;;
       4)
         run_step \
