@@ -50,38 +50,11 @@ wait_for_app_ports() {
   return 1
 }
 
-start_app_direct() {
-  local backend_log="${SERVER_DIR}/.logs/backend-menu.log"
-  local frontend_log="${FLUTTER_DIR}/.logs/frontend-menu.log"
-
-  mkdir -p "${SERVER_DIR}/.logs" "${FLUTTER_DIR}/.logs"
-
-  (
-    cd "${SERVER_DIR}"
-    ./scripts/run_backend_terminal.sh dev "${SERVER_DIR}/.env.devdb" "${BACKEND_PORT}" "${SERVER_DIR}/.logs/backend.meta" "${SERVER_DIR}/.logs/backend-dev.pid" "${SERVER_DIR}" > "${backend_log}" 2>&1 &
-  )
-
-  (
-    cd "${SERVER_DIR}"
-    ./scripts/run_frontend_terminal.sh local LOCAL "${FRONTEND_PORT}" "${FLUTTER_DIR}/.logs/frontend.meta" "${FLUTTER_DIR}/.logs/flutter-web-local.pid" "${FLUTTER_DIR}" > "${frontend_log}" 2>&1 &
-  )
-
-  echo
-  echo "App launch sent."
-  echo "Backend log: ${backend_log}"
-  echo "Frontend log: ${frontend_log}"
-  if wait_for_app_ports 20; then
-    echo "Backend + Frontend are UP."
-  else
-    echo "Still starting. Run option 7 to verify current status."
-  fi
-}
-
 print_menu() {
   cat <<EOF
 
 ================= BB Workspace Control Panel =================
- App processes run in VS Code integrated terminals only.
+ App processes open in VS Code integrated terminals with clear titles.
  Version: ${PANEL_VERSION}
  1) Start Full Dev (FE local + BE dev + infra)
  2) Start Infra Only (Docker + DB + pgAdmin + open UI)
@@ -107,9 +80,8 @@ main() {
     case "${choice}" in
       1)
         run_step \
-          "Start Infra Only" \
-          "OPEN_PGADMIN_UI=1 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh"
-        start_app_direct
+          "Start Full Dev Environment" \
+          "OPEN_PGADMIN_UI=1 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=1 ./scripts/start_full_dev_environment.sh"
         ;;
       2)
         run_step \
@@ -117,7 +89,9 @@ main() {
           "OPEN_PGADMIN_UI=1 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh"
         ;;
       3)
-        start_app_direct
+        run_step \
+          "Start App Only" \
+          "OPEN_PGADMIN_UI=0 START_PGADMIN_CONTAINER=0 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=1 ./scripts/start_full_dev_environment.sh"
         ;;
       4)
         run_step \
