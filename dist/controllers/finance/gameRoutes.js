@@ -16,6 +16,7 @@ exports.registerGameRoutes = registerGameRoutes;
 const userModel_1 = __importDefault(require("../../models/userModel"));
 const verifyToken_1 = require("../verifyToken");
 const authz_1 = require("../authz");
+const socket_1 = require("../../socket/socket");
 function registerGameRoutes(router) {
     // Game recording is restricted to managers only.
     router.post('/record-game', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -107,6 +108,13 @@ function registerGameRoutes(router) {
         `, [gameId, username, playerCost, adjustmentNote]);
                 }
             }
+            (0, socket_1.emitToTeam)(team_id, 'financeSummaryUpdated', {
+                team_id,
+                game_id: gameId,
+                game_session_id: gameSessionId,
+                source: 'record-game',
+                at: new Date().toISOString(),
+            });
             res.status(200).json({ success: true, message: 'Game recorded successfully', gameId, gameSessionId });
         }
         catch (error) {
@@ -133,6 +141,12 @@ function registerGameRoutes(router) {
                 res.status(404).json({ success: false, message: 'Attendance record not found' });
                 return;
             }
+            (0, socket_1.emitToTeam)(team_id, 'financeSummaryUpdated', {
+                team_id,
+                attendance_id,
+                source: 'delete-attendance',
+                at: new Date().toISOString(),
+            });
             res.status(200).json({ success: true, message: 'Game record deleted for player' });
         }
         catch (error) {

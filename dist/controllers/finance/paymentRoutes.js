@@ -18,6 +18,7 @@ const userModel_1 = __importDefault(require("../../models/userModel"));
 const verifyToken_1 = require("../verifyToken");
 const emailService_1 = require("../../services/emailService");
 const authz_1 = require("../authz");
+const socket_1 = require("../../socket/socket");
 function registerPaymentRoutes(router) {
     // Payment creation is restricted to managers only.
     router.post('/add-payment', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -76,6 +77,12 @@ function registerPaymentRoutes(router) {
                 : [username, team_id, amount, method, notes || '', paymentDate];
             yield userModel_1.default.query(paymentQuery, paymentValues);
             console.log(`[payments:add][${traceId}] inserted team=${team_id} username=${username} amount=${amount} method=${method}`);
+            (0, socket_1.emitToTeam)(team_id, 'financeSummaryUpdated', {
+                team_id,
+                username,
+                source: 'add-payment',
+                at: new Date().toISOString(),
+            });
             // Send payment confirmation email
             let emailStatus = 'skipped';
             let emailReason = null;
@@ -148,6 +155,12 @@ function registerPaymentRoutes(router) {
                 return;
             }
             res.status(200).json({ success: true, message: 'Payment deleted' });
+            (0, socket_1.emitToTeam)(team_id, 'financeSummaryUpdated', {
+                team_id,
+                payment_id,
+                source: 'delete-payment',
+                at: new Date().toISOString(),
+            });
         }
         catch (error) {
             console.error('Error deleting payment:', error);

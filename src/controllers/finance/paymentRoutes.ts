@@ -4,6 +4,7 @@ import pool from '../../models/userModel';
 import { verifyToken } from '../verifyToken';
 import { sendPaymentConfirmationEmail } from '../../services/emailService';
 import { getTeamId, requireManager } from '../authz';
+import { emitToTeam } from '../../socket/socket';
 
 export function registerPaymentRoutes(router: Router): void {
   // Payment creation is restricted to managers only.
@@ -82,6 +83,12 @@ export function registerPaymentRoutes(router: Router): void {
       console.log(
         `[payments:add][${traceId}] inserted team=${team_id} username=${username} amount=${amount} method=${method}`
       );
+      emitToTeam(team_id, 'financeSummaryUpdated', {
+        team_id,
+        username,
+        source: 'add-payment',
+        at: new Date().toISOString(),
+      });
 
       // Send payment confirmation email
       let emailStatus: 'sent' | 'skipped' | 'failed' = 'skipped';
@@ -185,6 +192,12 @@ export function registerPaymentRoutes(router: Router): void {
         }
 
         res.status(200).json({ success: true, message: 'Payment deleted' });
+        emitToTeam(team_id, 'financeSummaryUpdated', {
+          team_id,
+          payment_id,
+          source: 'delete-payment',
+          at: new Date().toISOString(),
+        });
       } catch (error) {
         console.error('Error deleting payment:', error);
         res

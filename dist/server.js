@@ -20,6 +20,13 @@ const app = (0, express_1.default)();
 const PORT = Number(process.env.PORT) || 9090;
 app.use((0, cors_1.default)()); // Enable CORS
 app.use(express_1.default.json());
+app.use((_req, res, next) => {
+    // Dynamic API responses should never be cached by browsers/proxies.
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+});
 // Mount Routes
 app.use('/', userController_1.default);
 app.use('/finance', financeController_1.default); // Base path for finance endpoints
@@ -27,10 +34,6 @@ const server = http_1.default.createServer(app);
 const io = (0, socket_1.initialize)(server); // Capture the returned io object
 // Initialize DB Tables
 (0, dbInit_1.default)();
-io.on('connection', (socket) => {
-    // מומלץ להגדיר טיפוס מדויק ל-socket
-    console.log('Client connected');
-});
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });

@@ -2,6 +2,7 @@ import { Request, Response, Router } from 'express';
 import pool from '../../models/userModel';
 import { verifyToken } from '../verifyToken';
 import { getTeamId, requireManager } from '../authz';
+import { emitToTeam } from '../../socket/socket';
 
 export function registerGameRoutes(router: Router): void {
   // Game recording is restricted to managers only.
@@ -125,6 +126,14 @@ export function registerGameRoutes(router: Router): void {
         }
       }
 
+      emitToTeam(team_id, 'financeSummaryUpdated', {
+        team_id,
+        game_id: gameId,
+        game_session_id: gameSessionId,
+        source: 'record-game',
+        at: new Date().toISOString(),
+      });
+
       res.status(200).json({ success: true, message: 'Game recorded successfully', gameId, gameSessionId });
     } catch (error: any) {
       console.error('Error recording game:', error);
@@ -154,6 +163,13 @@ export function registerGameRoutes(router: Router): void {
         res.status(404).json({ success: false, message: 'Attendance record not found' });
         return;
       }
+      emitToTeam(team_id, 'financeSummaryUpdated', {
+        team_id,
+        attendance_id,
+        source: 'delete-attendance',
+        at: new Date().toISOString(),
+      });
+
       res.status(200).json({ success: true, message: 'Game record deleted for player' });
     } catch (error: any) {
       console.error('Error deleting attendance:', error);

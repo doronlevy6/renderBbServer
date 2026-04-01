@@ -20,6 +20,16 @@ const PORT: number = Number(process.env.PORT) || 9090;
 
 app.use(cors()); // Enable CORS
 app.use(express.json());
+app.use((_req: Request, res: Response, next) => {
+  // Dynamic API responses should never be cached by browsers/proxies.
+  res.setHeader(
+    'Cache-Control',
+    'no-store, no-cache, must-revalidate, proxy-revalidate'
+  );
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
 
 // Mount Routes
 app.use('/', userRoutes);
@@ -30,11 +40,6 @@ const io = initialize(server); // Capture the returned io object
 
 // Initialize DB Tables
 createTables();
-
-io.on('connection', (socket: any) => {
-  // מומלץ להגדיר טיפוס מדויק ל-socket
-  console.log('Client connected');
-});
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
