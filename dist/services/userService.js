@@ -63,7 +63,7 @@ class UserService {
     getAllUsernames(teamId) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const result = yield userModel_1.default.query(`SELECT username FROM users
+                const result = yield userModel_1.default.query(`SELECT username, role FROM users
           WHERE team_id=$1 
           ORDER BY username ASC`, [teamId]);
                 return result.rows;
@@ -332,6 +332,28 @@ class UserService {
             catch (err) {
                 console.error(err);
                 throw new Error(err.message || 'Failed to update player role');
+            }
+        });
+    }
+    // Update email for currently authenticated user only (scoped to team).
+    updateOwnEmail(username, teamId, email) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const result = yield userModel_1.default.query(`UPDATE users
+         SET email = $1
+         WHERE username = $2 AND team_id = $3
+         RETURNING username, email, team_id, role`, [email, username, teamId]);
+                if (result.rows.length === 0) {
+                    throw new Error('User not found in your team');
+                }
+                return result.rows[0];
+            }
+            catch (err) {
+                console.error(err);
+                if ((err === null || err === void 0 ? void 0 : err.code) === '23505') {
+                    throw new Error('Email already exists');
+                }
+                throw new Error(err.message || 'Failed to update email');
             }
         });
     }

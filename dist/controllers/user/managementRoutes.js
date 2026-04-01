@@ -47,6 +47,49 @@ function registerManagementRoutes(router) {
             res.status(500).json({ success: false, message: err.message });
         }
     }));
+    // Authenticated user action: update own email.
+    router.put('/update-my-email', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
+        var _a, _b, _c;
+        try {
+            // @ts-ignore
+            const requesterUsername = (_a = req.user) === null || _a === void 0 ? void 0 : _a.username;
+            // @ts-ignore
+            const requesterTeamId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.team_id;
+            const normalizedEmail = typeof ((_c = req.body) === null || _c === void 0 ? void 0 : _c.email) === 'string' ? req.body.email.trim() : '';
+            if (!requesterUsername || !requesterTeamId) {
+                res.status(401).json({
+                    success: false,
+                    message: 'Unauthorized request',
+                });
+                return;
+            }
+            if (!normalizedEmail) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Email is required',
+                });
+                return;
+            }
+            const basicEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!basicEmailRegex.test(normalizedEmail)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Invalid email format',
+                });
+                return;
+            }
+            const user = yield userService_1.default.updateOwnEmail(requesterUsername, requesterTeamId, normalizedEmail);
+            res.status(200).json({ success: true, user });
+        }
+        catch (err) {
+            const msg = (err === null || err === void 0 ? void 0 : err.message) || 'Failed to update email';
+            if (msg === 'Email already exists') {
+                res.status(409).json({ success: false, message: msg });
+                return;
+            }
+            res.status(500).json({ success: false, message: msg });
+        }
+    }));
     // Manager action: add a new player into requester's team.
     router.post('/add-player', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
         var _a, _b;

@@ -19,12 +19,19 @@ export function registerEnlistRoutes(router: Router): void {
     try {
       // @ts-ignore
       const teamid = req.user?.team_id;
-      const usernames = await userService.getAllUsernames(teamid!);
+      const users = await userService.getAllUsernames(teamid!);
       console.log('teamid', teamid);
 
       res
         .status(200)
-        .json({ success: true, usernames: usernames.map((u) => u.username) });
+        .json({
+          success: true,
+          usernames: users.map((u) => u.username),
+          users: users.map((u) => ({
+            username: u.username,
+            role: (u.role || 'player').toLowerCase(),
+          })),
+        });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
     }

@@ -102,10 +102,10 @@ class UserService {
   // קבלת כל שמות המשתמשים
   public async getAllUsernames(
     teamId: number
-  ): Promise<{ username: string }[]> {
+  ): Promise<{ username: string; role?: string }[]> {
     try {
       const result = await pool.query(
-        `SELECT username FROM users
+        `SELECT username, role FROM users
           WHERE team_id=$1 
           ORDER BY username ASC`,
         [teamId]
@@ -444,6 +444,35 @@ class UserService {
     } catch (err: any) {
       console.error(err);
       throw new Error(err.message || 'Failed to update player role');
+    }
+  }
+
+  // Update email for currently authenticated user only (scoped to team).
+  public async updateOwnEmail(
+    username: string,
+    teamId: number,
+    email: string
+  ): Promise<Pick<User, 'username' | 'email' | 'team_id' | 'role'>> {
+    try {
+      const result = await pool.query(
+        `UPDATE users
+         SET email = $1
+         WHERE username = $2 AND team_id = $3
+         RETURNING username, email, team_id, role`,
+        [email, username, teamId]
+      );
+
+      if (result.rows.length === 0) {
+        throw new Error('User not found in your team');
+      }
+
+      return result.rows[0];
+    } catch (err: any) {
+      console.error(err);
+      if (err?.code === '23505') {
+        throw new Error('Email already exists');
+      }
+      throw new Error(err.message || 'Failed to update email');
     }
   }
 }

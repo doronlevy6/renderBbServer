@@ -23,11 +23,18 @@ function registerEnlistRoutes(router) {
         try {
             // @ts-ignore
             const teamid = (_a = req.user) === null || _a === void 0 ? void 0 : _a.team_id;
-            const usernames = yield userService_1.default.getAllUsernames(teamid);
+            const users = yield userService_1.default.getAllUsernames(teamid);
             console.log('teamid', teamid);
             res
                 .status(200)
-                .json({ success: true, usernames: usernames.map((u) => u.username) });
+                .json({
+                success: true,
+                usernames: users.map((u) => u.username),
+                users: users.map((u) => ({
+                    username: u.username,
+                    role: (u.role || 'player').toLowerCase(),
+                })),
+            });
         }
         catch (err) {
             res.status(500).json({ success: false, message: err.message });

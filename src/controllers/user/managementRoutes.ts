@@ -34,6 +34,57 @@ export function registerManagementRoutes(router: Router): void {
     }
   });
 
+  // Authenticated user action: update own email.
+  router.put('/update-my-email', verifyToken, async (req: Request, res: Response) => {
+    try {
+      // @ts-ignore
+      const requesterUsername = req.user?.username as string | undefined;
+      // @ts-ignore
+      const requesterTeamId = req.user?.team_id as number | undefined;
+      const normalizedEmail =
+        typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+
+      if (!requesterUsername || !requesterTeamId) {
+        res.status(401).json({
+          success: false,
+          message: 'Unauthorized request',
+        });
+        return;
+      }
+
+      if (!normalizedEmail) {
+        res.status(400).json({
+          success: false,
+          message: 'Email is required',
+        });
+        return;
+      }
+
+      const basicEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!basicEmailRegex.test(normalizedEmail)) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid email format',
+        });
+        return;
+      }
+
+      const user = await userService.updateOwnEmail(
+        requesterUsername,
+        requesterTeamId,
+        normalizedEmail
+      );
+      res.status(200).json({ success: true, user });
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to update email';
+      if (msg === 'Email already exists') {
+        res.status(409).json({ success: false, message: msg });
+        return;
+      }
+      res.status(500).json({ success: false, message: msg });
+    }
+  });
+
   // Manager action: add a new player into requester's team.
   router.post('/add-player', verifyToken, requireManager, async (req: Request, res: Response) => {
     const { username, password, email, role } = req.body as {
