@@ -35,7 +35,7 @@
 - תפריט מספרי אחד עם כל הפעולות המרכזיות
 - כולל תיאור קצר לכל כפתור
 - בלי לחפש כל פעם Task שונה ב־VS Code
-- בהרמות app מהתפריט, הטרמינלים נפתחים בתוך VS Code בלבד (לא בחלון Terminal חיצוני)
+- מצב יציב: ה־App עולה כתהליכי רקע אמינים (לא תלוי בחלונות טרמינל נוספים)
 
 חשוב:
 - בתפריט, פעולה `1` מרימה Full Dev (תשתיות + אפליקציה).
@@ -44,8 +44,7 @@
   - backend: `/Users/dwrwnlwy/projects/BB_server/.logs/backend-runtime.log`
   - frontend: `/Users/dwrwnlwy/projects/BB_flutter/.logs/frontend-runtime.log`
 - אם לא עלה תוך כמה שניות, בדוק עם `7` (Show Active Modes) וחכה עוד רגע.
-- ברירת מחדל חדשה: לא נפתחים טרמינלים חיצוניים (Terminal.app) אוטומטית.
-- אם תפעיל ידנית `ALLOW_EXTERNAL_TERMINAL=1`, רק אז יתאפשר fallback חיצוני (לא מומלץ).
+- אין פתיחה אוטומטית של Terminal.app.
 
 אם תרצה בלי תפריט, אפשר עדיין לבחור ישירות:
 - `Start Full Dev Environment`
@@ -67,9 +66,8 @@
 - Docker Desktop
 - `bb-db`
 - `pgadmin`
-- טרמינל של `Prepare` בתוך VS Code
-- טרמינל גלוי ל־backend בתוך VS Code
-- טרמינל גלוי ל־frontend בתוך VS Code
+- תהליך backend ברקע
+- תהליך frontend ברקע
 - טאב דפדפן לאפליקציית הפרונט (`http://localhost:7357`) כאשר הפרונט עולה
 
 הערה תפעולית:
@@ -77,9 +75,9 @@
 - בדוק תמיד עם `Workspace: Show Active Modes` שהסטטוס הוא `running`.
 
 הערה:
-- ה־backend וה־frontend לא רצים "מאחורי הקלעים".
-- כל אחד נפתח בטרמינל של VS Code עצמו, עם לוגים חיים כאילו הרצת ידנית.
-- כך הכול נשאר בתוך העורך ולא בחלונות חיצוניים.
+- ה־backend וה־frontend רצים כרגע כתהליכי רקע.
+- את הלוגים רואים בקבצי runtime (הנתיבים למעלה).
+- זאת הבחירה שנעשתה כדי למנוע חוסר יציבות שהיה בפתיחה/סגירה של טרמינלים.
 
 ## 3. כפתורים עיקריים
 
@@ -88,16 +86,24 @@
 - `Stop Infra Only (DB + pgAdmin)`
 - `Start App Only (FE Local API + BE Dev DB)`
 - `Stop App Only (FE + BE)`
+- `Restart App Only (FE + BE, keep infra)`
 - `Start Full Dev Environment`
 - `Stop Full Dev Environment`
 
 מתי משתמשים במה:
 - אם אתה רק רוצה DB ו־pgAdmin: `Start Infra Only`
 - אם ה־DB כבר למעלה ורק הפרונט/בק נפלו: `Start App Only`
+- אם עשית שינוי קוד ורוצה רענון נקי מהיר לפרונט+בק: `Restart App Only`
 - אם אתה רוצה הכול בלחיצה אחת: `Start Full Dev Environment`
 - אם אתה רוצה לעצור רק את האפליקציה: `Stop App Only`
 - אם אתה רוצה לעצור רק את התשתית: `Stop Infra Only`
 - אם אתה רוצה לכבות הכול: `Stop Full Dev Environment`
+
+שגרת עבודה פשוטה (מומלץ):
+1. בתחילת יום: `Start Full Dev Environment`
+2. במהלך פיתוח (אחרי שינויים): `Restart App Only`
+3. בדיקת מצב: `Show Active Modes`
+4. בסוף יום: `Stop Full Dev Environment`
 
 ## 4. איך מזהים באיזה סביבה אתה עובד עכשיו
 
@@ -120,8 +126,9 @@
 - בקבצי קוד יש לפעמים `PROD` בתור fallback.
 - זה לא אומר שכרגע אתה על `PROD`.
 - הערך בפועל נקבע מה־Task בזמן הרצה (`APP_ENV`, `ENV_FILE`).
-- `Status` מייצג מה רץ כרגע בפועל.
+- `Status` מייצג את מצב ההרצה האחרון שביקשת (`starting` / `running` / `infra_only` / `stopped`).
 - `Configured ...` מייצג מה הוגדר בפעם האחרונה (לא בהכרח רץ כרגע).
+- מקור האמת למצב בזמן אמת הוא שורות `LIVE ...` (UP/DOWN).
 
 ### 4.1 דיבוג תשלומים (שקוף ומהיר)
 

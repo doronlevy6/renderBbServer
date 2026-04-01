@@ -196,14 +196,14 @@ main() {
     stop_from_pid_file "${LOG_DIR_SERVER}/backend-dev.pid" "backend-dev"
     stop_from_pid_file "${LOG_DIR_SERVER}/backend-prod.pid" "backend-prod"
     stop_listening_process_if_matches "${BACKEND_PORT}" "backend" "(node|ts-node|tsx|npm)"
-    stop_matching_processes "backend-orphan" "${SERVER_DIR}/node_modules/.bin/ts-node-dev.*src/server.ts"
+    stop_matching_processes "backend-orphan" "(ts-node-dev.*src/server\\.ts|npm run dev|node.*src/server\\.ts)"
     rm -f "${BACKEND_META_FILE}"
 
     kill_pid_if_alive "$(read_meta_value "${FRONTEND_META_FILE}" "PID")" "frontend"
     stop_from_pid_file "${LOG_DIR_FLUTTER}/flutter-web-local.pid" "flutter-web-local"
     stop_from_pid_file "${LOG_DIR_FLUTTER}/flutter-web-prod.pid" "flutter-web-prod"
     stop_listening_process_if_matches "${FRONTEND_PORT}" "frontend" "(flutter|dart)"
-    stop_matching_processes "frontend-orphan" "flutter run -d chrome --web-port ${FRONTEND_PORT}"
+    stop_matching_processes "frontend-orphan" "flutter run .*--web-port ${FRONTEND_PORT}"
     rm -f "${FRONTEND_META_FILE}"
   else
     log "Skipping frontend/backend stop because STOP_APP_PROCESSES=${STOP_APP_PROCESSES}."

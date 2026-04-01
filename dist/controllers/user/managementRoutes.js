@@ -16,6 +16,13 @@ exports.registerManagementRoutes = registerManagementRoutes;
 const userService_1 = __importDefault(require("../../services/userService"));
 const verifyToken_1 = require("../verifyToken");
 const authz_1 = require("../authz");
+const ALLOWED_ROLES = new Set(['manager', 'player', 'guest']);
+const normalizeRole = (value) => {
+    if (typeof value !== 'string')
+        return 'player';
+    const role = value.trim().toLowerCase();
+    return role === '' ? 'player' : role;
+};
 function registerManagementRoutes(router) {
     // Public list of teams for registration/login flows.
     router.get('/teams', (_req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -43,7 +50,7 @@ function registerManagementRoutes(router) {
     // Manager action: add a new player into requester's team.
     router.post('/add-player', verifyToken_1.verifyToken, authz_1.requireManager, (req, res) => __awaiter(this, void 0, void 0, function* () {
         var _a, _b;
-        const { username, password, email } = req.body;
+        const { username, password, email, role } = req.body;
         try {
             // @ts-ignore
             const requesterTeamId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.team_id;
@@ -52,6 +59,7 @@ function registerManagementRoutes(router) {
             const cleanUsername = username === null || username === void 0 ? void 0 : username.trim();
             const cleanEmail = (email === null || email === void 0 ? void 0 : email.trim()) || '';
             const cleanPassword = (password === null || password === void 0 ? void 0 : password.trim()) || '123456';
+            const cleanRole = normalizeRole(role);
             if (requesterRole !== 'manager') {
                 res
                     .status(403)
@@ -72,7 +80,14 @@ function registerManagementRoutes(router) {
                 });
                 return;
             }
-            const user = yield userService_1.default.createUser(cleanUsername, cleanPassword, cleanEmail, requesterTeamId, 'player');
+            if (!ALLOWED_ROLES.has(cleanRole)) {
+                res.status(400).json({
+                    success: false,
+                    message: `Invalid role '${cleanRole}'. Allowed: manager, player, guest`,
+                });
+                return;
+            }
+            const user = yield userService_1.default.createUser(cleanUsername, cleanPassword, cleanEmail, requesterTeamId, cleanRole);
             res.status(201).json({ success: true, user });
         }
         catch (err) {
@@ -107,11 +122,20 @@ function registerManagementRoutes(router) {
         // @ts-ignore
         const requesterTeamId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.team_id;
         try {
+            const normalizedUsername = typeof newUsername === 'string' ? newUsername.trim() : '';
+            const normalizedEmail = typeof newEmail === 'string' ? newEmail.trim() : undefined;
+            const normalizedPassword = typeof newPassword === 'string' && newPassword.trim() !== ''
+                ? newPassword
+                : undefined;
+            if (!normalizedUsername) {
+                res.status(400).json({ success: false, message: 'Username is required' });
+                return;
+            }
             if (!requesterTeamId) {
                 res.status(400).json({ success: false, message: 'Team identification failed' });
                 return;
             }
-            const user = yield userService_1.default.updateUser(username, newUsername, newEmail, newPassword, requesterTeamId);
+            const user = yield userService_1.default.updateUser(username, normalizedUsername, normalizedEmail, normalizedPassword, requesterTeamId);
             res.status(200).json({ success: true, user });
         }
         catch (err) {
@@ -139,7 +163,15 @@ function registerManagementRoutes(router) {
                 return;
             }
             for (const update of roleUpdates) {
-                yield userService_1.default.updatePlayerRole(update.username, update.role, requesterTeamId);
+                const cleanRole = normalizeRole(update.role);
+                if (!ALLOWED_ROLES.has(cleanRole)) {
+                    res.status(400).json({
+                        success: false,
+                        message: `Invalid role '${cleanRole}' for user ${update.username}`,
+                    });
+                    return;
+                }
+                yield userService_1.default.updatePlayerRole(update.username, cleanRole, requesterTeamId);
             }
             res
                 .status(200)

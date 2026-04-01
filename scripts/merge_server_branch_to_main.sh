@@ -12,6 +12,8 @@ PROD_LOCK_REL="${PROD_LOCK_REL:-.env.production.lock}"
 PROD_LOCK_FILE="${PROD_LOCK_FILE:-${SERVER_DIR}/${PROD_LOCK_REL}}"
 REQUIRE_NEON_HOST="${REQUIRE_NEON_HOST:-1}"
 ALLOW_PROD_LOCK_UPDATE="${ALLOW_PROD_LOCK_UPDATE:-0}"
+AUTO_COMMIT_DIRTY="${AUTO_COMMIT_DIRTY:-1}"
+AUTO_COMMIT_MESSAGE_PREFIX="${AUTO_COMMIT_MESSAGE_PREFIX:-chore: auto-commit before server deploy}"
 
 log() {
   echo "[server-merge] $1"
@@ -22,6 +24,28 @@ require_clean_worktree() {
     echo "[server-merge] ERROR: working tree is not clean."
     echo "[server-merge] Commit or stash your changes before merging to main."
     exit 1
+  fi
+}
+
+auto_commit_if_dirty() {
+  if [[ -z "$(git -C "${SERVER_DIR}" status --short)" ]]; then
+    return
+  fi
+
+  if [[ "${AUTO_COMMIT_DIRTY}" != "1" ]]; then
+    require_clean_worktree
+    return
+  fi
+
+  local ts msg
+  ts="$(date +"%Y-%m-%d %H:%M:%S %Z")"
+  msg="${AUTO_COMMIT_MESSAGE_PREFIX} (${ts})"
+
+  log "Dirty worktree detected. Creating auto-commit before deploy merge..."
+  git -C "${SERVER_DIR}" add -A
+  if ! git -C "${SERVER_DIR}" diff --cached --quiet; then
+    git -C "${SERVER_DIR}" commit -m "${msg}"
+    log "Auto-commit created."
   fi
 }
 
@@ -112,7 +136,7 @@ main() {
     exit 1
   fi
 
-  require_clean_worktree
+  auto_commit_if_dirty
   ensure_prod_db_target_is_neon
 
   log "Fetching latest refs from origin..."

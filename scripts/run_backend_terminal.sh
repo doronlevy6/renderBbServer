@@ -40,8 +40,8 @@ EOF
 
 echo "$$" > "${PID_FILE}"
 
-# Mirror terminal output to a stable log file for post-mortem debugging.
-exec > >(tee -a "${LOG_FILE}") 2>&1
+# Stable background-safe logging (avoids process-substitution teardown issues).
+exec >> "${LOG_FILE}" 2>&1
 
 printf '\033]1;BB Backend (%s)\007' "${MODE}"
 clear >/dev/null 2>&1 || true

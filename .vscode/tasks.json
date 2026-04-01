@@ -278,7 +278,7 @@
         "background": {
           "activeOnStart": true,
           "beginsPattern": ".",
-          "endsPattern": "A Dart VM Service on Chrome is available at:|Flutter run key commands\\."
+          "endsPattern": "Waiting for connection from debug service on Web Server|A Dart VM Service on Chrome is available at:|Flutter run key commands\\."
         }
       }
     },
@@ -307,7 +307,7 @@
         "background": {
           "activeOnStart": true,
           "beginsPattern": ".",
-          "endsPattern": "A Dart VM Service on Chrome is available at:|Flutter run key commands\\."
+          "endsPattern": "Waiting for connection from debug service on Web Server|A Dart VM Service on Chrome is available at:|Flutter run key commands\\."
         }
       }
     },

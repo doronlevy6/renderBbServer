@@ -151,7 +151,10 @@ export function registerFinanceReportRoutes(router: Router): void {
     }
 
     try {
-      const usersRes = await pool.query('SELECT username, custom_game_cost FROM users WHERE team_id = $1', [team_id]);
+      const usersRes = await pool.query(
+        'SELECT username, custom_game_cost, role FROM users WHERE team_id = $1',
+        [team_id]
+      );
       const users = usersRes.rows;
 
       const summary = [];
@@ -175,15 +178,30 @@ export function registerFinanceReportRoutes(router: Router): void {
              `,
           [user.username, team_id]
         );
+        const lastPaymentRes = await pool.query(
+          `
+                SELECT amount, date
+                FROM payments
+                WHERE username = $1 AND team_id = $2
+                ORDER BY date DESC, payment_id DESC
+                LIMIT 1
+             `,
+          [user.username, team_id]
+        );
 
         const debt = parseInt(debtRes.rows[0].debt);
         const paid = parseInt(paidRes.rows[0].paid);
+        const lastPayment = lastPaymentRes.rows[0];
 
         summary.push({
           username: user.username,
+          role: user.role || 'player',
           balance: paid - debt,
           debt,
           paid,
+          last_payment_amount:
+            lastPayment?.amount == null ? null : parseInt(lastPayment.amount),
+          last_payment_date: lastPayment?.date || null,
           custom_game_cost: user.custom_game_cost
         });
       }
@@ -212,7 +230,10 @@ export function registerFinanceReportRoutes(router: Router): void {
     }
 
     try {
-      const usersRes = await pool.query('SELECT username, custom_game_cost FROM users WHERE team_id = $1', [team_id]);
+      const usersRes = await pool.query(
+        'SELECT username, custom_game_cost, role FROM users WHERE team_id = $1',
+        [team_id]
+      );
       const users = usersRes.rows;
 
       const allData: Record<string, any> = {};
@@ -247,6 +268,7 @@ export function registerFinanceReportRoutes(router: Router): void {
 
         allData[username] = {
           success: true,
+          role: user.role || 'player',
           balance,
           totalCost,
           totalPaid,

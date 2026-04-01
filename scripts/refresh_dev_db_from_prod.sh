@@ -58,10 +58,30 @@ ensure_container_running() {
   fi
 }
 
-load_env() {
+read_env_value() {
   local file="$1"
-  # shellcheck disable=SC1090
-  source "${file}"
+  local key="$2"
+  awk -F'=' -v k="${key}" '
+    $0 ~ /^[[:space:]]*#/ {next}
+    $1 == k {
+      val = substr($0, index($0, "=") + 1)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", val)
+      gsub(/^'\''|'\''$/, "", val)
+      gsub(/^"|"$/, "", val)
+      print val
+      exit
+    }
+  ' "${file}"
+}
+
+require_env_value() {
+  local value="$1"
+  local key="$2"
+  local file="$3"
+  if [[ -z "${value}" ]]; then
+    echo "[db-refresh] ERROR: missing '${key}' in ${file}"
+    exit 1
+  fi
 }
 
 docker_host_for_client() {
@@ -81,19 +101,30 @@ main() {
   ensure_docker_running
   ensure_container_running "${DB_CONTAINER}"
 
-  load_env "${PROD_ENV_FILE}"
-  local prod_host="${PGHOST}"
-  local prod_db="${PGDATABASE}"
-  local prod_user="${PGUSER}"
-  local prod_password="${PGPASSWORD}"
-  local prod_ssl="${SSL_FALSE:-true}"
+  local prod_host prod_db prod_user prod_password prod_ssl
+  prod_host="$(read_env_value "${PROD_ENV_FILE}" "PGHOST")"
+  prod_db="$(read_env_value "${PROD_ENV_FILE}" "PGDATABASE")"
+  prod_user="$(read_env_value "${PROD_ENV_FILE}" "PGUSER")"
+  prod_password="$(read_env_value "${PROD_ENV_FILE}" "PGPASSWORD")"
+  prod_ssl="$(read_env_value "${PROD_ENV_FILE}" "SSL_FALSE")"
+  prod_ssl="${prod_ssl:-true}"
 
-  load_env "${DEV_ENV_FILE}"
-  local dev_host="${PGHOST}"
-  local dev_db="${PGDATABASE}"
-  local dev_user="${PGUSER}"
-  local dev_password="${PGPASSWORD}"
-  local dev_ssl="${SSL_FALSE:-false}"
+  local dev_host dev_db dev_user dev_password dev_ssl
+  dev_host="$(read_env_value "${DEV_ENV_FILE}" "PGHOST")"
+  dev_db="$(read_env_value "${DEV_ENV_FILE}" "PGDATABASE")"
+  dev_user="$(read_env_value "${DEV_ENV_FILE}" "PGUSER")"
+  dev_password="$(read_env_value "${DEV_ENV_FILE}" "PGPASSWORD")"
+  dev_ssl="$(read_env_value "${DEV_ENV_FILE}" "SSL_FALSE")"
+  dev_ssl="${dev_ssl:-false}"
+
+  require_env_value "${prod_host}" "PGHOST" "${PROD_ENV_FILE}"
+  require_env_value "${prod_db}" "PGDATABASE" "${PROD_ENV_FILE}"
+  require_env_value "${prod_user}" "PGUSER" "${PROD_ENV_FILE}"
+  require_env_value "${prod_password}" "PGPASSWORD" "${PROD_ENV_FILE}"
+  require_env_value "${dev_host}" "PGHOST" "${DEV_ENV_FILE}"
+  require_env_value "${dev_db}" "PGDATABASE" "${DEV_ENV_FILE}"
+  require_env_value "${dev_user}" "PGUSER" "${DEV_ENV_FILE}"
+  require_env_value "${dev_password}" "PGPASSWORD" "${DEV_ENV_FILE}"
   local prod_host_for_docker
   local dev_host_for_docker
   prod_host_for_docker="$(docker_host_for_client "${prod_host}")"

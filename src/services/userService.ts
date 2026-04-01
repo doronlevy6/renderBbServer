@@ -356,10 +356,31 @@ class UserService {
           [newUsername, passwordToUse, tempEmail, teamIdToUse, roleToUse]
         );
 
-        // Update dependent tables to point to new user
-        await client.query('UPDATE player_rankings SET rater_username = $1 WHERE rater_username = $2', [newUsername, currentUsername]);
-        await client.query('UPDATE player_rankings SET rated_username = $1 WHERE rated_username = $2', [newUsername, currentUsername]);
-        await client.query('UPDATE next_game_enlistment SET username = $1 WHERE username = $2', [newUsername, currentUsername]);
+        // Update dependent tables to point to the new username before deleting old user.
+        await client.query(
+          'UPDATE player_rankings SET rater_username = $1 WHERE rater_username = $2',
+          [newUsername, currentUsername]
+        );
+        await client.query(
+          'UPDATE player_rankings SET rated_username = $1 WHERE rated_username = $2',
+          [newUsername, currentUsername]
+        );
+        await client.query(
+          'UPDATE next_game_enlistment SET username = $1 WHERE username = $2',
+          [newUsername, currentUsername]
+        );
+        await client.query(
+          'UPDATE game_attendance SET username = $1 WHERE username = $2',
+          [newUsername, currentUsername]
+        );
+        await client.query('UPDATE payments SET username = $1 WHERE username = $2', [
+          newUsername,
+          currentUsername,
+        ]);
+        await client.query(
+          'UPDATE refresh_tokens SET username = $1 WHERE username = $2',
+          [newUsername, currentUsername]
+        );
 
         // Delete old user
         if (teamId) {
@@ -404,7 +425,7 @@ class UserService {
     }
   }
 
-  // Update player role (manager/player)
+  // Update player role (manager/player/guest)
   public async updatePlayerRole(
     username: string,
     role: string,

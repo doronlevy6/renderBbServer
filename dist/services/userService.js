@@ -272,10 +272,16 @@ class UserService {
                     const tempEmail = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}@placeholder.com`;
                     const roleToUse = currentUser.role;
                     yield client.query('INSERT INTO users (username, password, email, team_id, role) VALUES ($1, $2, $3, $4, $5)', [newUsername, passwordToUse, tempEmail, teamIdToUse, roleToUse]);
-                    // Update dependent tables to point to new user
+                    // Update dependent tables to point to the new username before deleting old user.
                     yield client.query('UPDATE player_rankings SET rater_username = $1 WHERE rater_username = $2', [newUsername, currentUsername]);
                     yield client.query('UPDATE player_rankings SET rated_username = $1 WHERE rated_username = $2', [newUsername, currentUsername]);
                     yield client.query('UPDATE next_game_enlistment SET username = $1 WHERE username = $2', [newUsername, currentUsername]);
+                    yield client.query('UPDATE game_attendance SET username = $1 WHERE username = $2', [newUsername, currentUsername]);
+                    yield client.query('UPDATE payments SET username = $1 WHERE username = $2', [
+                        newUsername,
+                        currentUsername,
+                    ]);
+                    yield client.query('UPDATE refresh_tokens SET username = $1 WHERE username = $2', [newUsername, currentUsername]);
                     // Delete old user
                     if (teamId) {
                         yield client.query('DELETE FROM users WHERE username = $1 AND team_id = $2', [currentUsername, teamId]);
@@ -312,7 +318,7 @@ class UserService {
             }
         });
     }
-    // Update player role (manager/player)
+    // Update player role (manager/player/guest)
     updatePlayerRole(username, role, teamId) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
