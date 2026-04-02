@@ -36,7 +36,7 @@ export function registerFinanceReportRoutes(router: Router): void {
             SELECT payment_id, amount, method, date, notes
             FROM payments
             WHERE username = $1 AND team_id = $2
-            ORDER BY date DESC
+            ORDER BY date DESC NULLS LAST, payment_id DESC
         `;
       const paymentsRes = await pool.query(paymentsQuery, [username, team_id]);
 
@@ -183,7 +183,7 @@ export function registerFinanceReportRoutes(router: Router): void {
                 SELECT amount, date
                 FROM payments
                 WHERE username = $1 AND team_id = $2
-                ORDER BY date DESC, payment_id DESC
+                ORDER BY date DESC NULLS LAST, payment_id DESC
                 LIMIT 1
              `,
           [user.username, team_id]
@@ -257,7 +257,7 @@ export function registerFinanceReportRoutes(router: Router): void {
                 SELECT payment_id, amount, method, date, notes
                 FROM payments
                 WHERE username = $1 AND team_id = $2
-                ORDER BY date DESC
+                ORDER BY date DESC NULLS LAST, payment_id DESC
             `;
         const paymentsRes = await pool.query(paymentsQuery, [username, team_id]);
 

@@ -14,6 +14,11 @@ const defaultEnvFile =
 const envFile = process.env.ENV_FILE || defaultEnvFile;
 dotenv.config({ path: envFile });
 console.log(`Using environment file: ${envFile}`);
+if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+  console.warn(
+    'SMTP is not configured in active env file. Payment emails will be skipped.'
+  );
+}
 
 const app: Application = express();
 const PORT: number = Number(process.env.PORT) || 9090;

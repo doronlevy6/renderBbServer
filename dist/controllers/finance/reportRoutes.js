@@ -47,7 +47,7 @@ function registerFinanceReportRoutes(router) {
             SELECT payment_id, amount, method, date, notes
             FROM payments
             WHERE username = $1 AND team_id = $2
-            ORDER BY date DESC
+            ORDER BY date DESC NULLS LAST, payment_id DESC
         `;
             const paymentsRes = yield userModel_1.default.query(paymentsQuery, [username, team_id]);
             // 3. Calculate Balance
@@ -166,7 +166,7 @@ function registerFinanceReportRoutes(router) {
                 SELECT amount, date
                 FROM payments
                 WHERE username = $1 AND team_id = $2
-                ORDER BY date DESC, payment_id DESC
+                ORDER BY date DESC NULLS LAST, payment_id DESC
                 LIMIT 1
              `, [user.username, team_id]);
                 const debt = parseInt(debtRes.rows[0].debt);
@@ -225,7 +225,7 @@ function registerFinanceReportRoutes(router) {
                 SELECT payment_id, amount, method, date, notes
                 FROM payments
                 WHERE username = $1 AND team_id = $2
-                ORDER BY date DESC
+                ORDER BY date DESC NULLS LAST, payment_id DESC
             `;
                 const paymentsRes = yield userModel_1.default.query(paymentsQuery, [username, team_id]);
                 // 3. Calculate Balance
