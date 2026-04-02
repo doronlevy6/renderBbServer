@@ -35,6 +35,16 @@
 - תפריט מספרי אחד עם כל הפעולות המרכזיות
 - כולל תיאור קצר לכל כפתור
 - בלי לחפש כל פעם Task שונה ב־VS Code
+- מצב יציב: ה־App עולה כתהליכי רקע אמינים (לא תלוי בחלונות טרמינל נוספים)
+
+חשוב:
+- בתפריט, פעולה `1` מרימה Full Dev (תשתיות + אפליקציה).
+- בתפריט, פעולה `3` מרימה App בלבד (backend + frontend).
+- הלוגים הקבועים של runtime:
+  - backend: `/Users/dwrwnlwy/projects/BB_server/.logs/backend-runtime.log`
+  - frontend: `/Users/dwrwnlwy/projects/BB_flutter/.logs/frontend-runtime.log`
+- אם לא עלה תוך כמה שניות, בדוק עם `7` (Show Active Modes) וחכה עוד רגע.
+- אין פתיחה אוטומטית של Terminal.app.
 
 אם תרצה בלי תפריט, אפשר עדיין לבחור ישירות:
 - `Start Full Dev Environment`
@@ -47,19 +57,27 @@
 - `.env.devdb` הוא קובץ מקומי ולא מנוהל בגיט.
 - אם חסר לך הקובץ, צור אותו מתוך:
   - `.env.devdb.example`
+- בהרצת `Start Full`/`Start App` המערכת תנסה ליצור אותו אוטומטית מה־example אם הוא חסר.
+- תוקף הטוקן נקבע דרך `JWT_EXPIRES_IN` (ברירת מחדל: `45d`), כדי לא לדרוש התחברות תכופה.
+- תוקף refresh token נקבע דרך `REFRESH_TOKEN_EXPIRES_IN` (ברירת מחדל: `180d`).
+- השרת תומך ב־`/refresh-token` (רוטציה אוטומטית) וב־`/logout` (ביטול refresh token).
 
 מה נפתח:
 - Docker Desktop
 - `bb-db`
 - `pgadmin`
-- טרמינל של `Prepare` בתוך VS Code
-- טרמינל גלוי ל־backend בתוך VS Code
-- טרמינל גלוי ל־frontend בתוך VS Code
+- תהליך backend ברקע
+- תהליך frontend ברקע
+- טאב דפדפן לאפליקציית הפרונט (`http://localhost:7357`) כאשר הפרונט עולה
+
+הערה תפעולית:
+- לפעמים ל־Chrome לוקח 10-30 שניות לעלות בפעם הראשונה אחרי Start.
+- בדוק תמיד עם `Workspace: Show Active Modes` שהסטטוס הוא `running`.
 
 הערה:
-- ה־backend וה־frontend לא רצים "מאחורי הקלעים".
-- כל אחד נפתח בטרמינל של VS Code עצמו, עם לוגים חיים כאילו הרצת ידנית.
-- כך הכול נשאר בתוך העורך ולא בחלונות חיצוניים.
+- ה־backend וה־frontend רצים כרגע כתהליכי רקע.
+- את הלוגים רואים בקבצי runtime (הנתיבים למעלה).
+- זאת הבחירה שנעשתה כדי למנוע חוסר יציבות שהיה בפתיחה/סגירה של טרמינלים.
 
 ## 3. כפתורים עיקריים
 
@@ -68,16 +86,24 @@
 - `Stop Infra Only (DB + pgAdmin)`
 - `Start App Only (FE Local API + BE Dev DB)`
 - `Stop App Only (FE + BE)`
+- `Restart App Only (FE + BE, keep infra)`
 - `Start Full Dev Environment`
 - `Stop Full Dev Environment`
 
 מתי משתמשים במה:
 - אם אתה רק רוצה DB ו־pgAdmin: `Start Infra Only`
 - אם ה־DB כבר למעלה ורק הפרונט/בק נפלו: `Start App Only`
+- אם עשית שינוי קוד ורוצה רענון נקי מהיר לפרונט+בק: `Restart App Only`
 - אם אתה רוצה הכול בלחיצה אחת: `Start Full Dev Environment`
 - אם אתה רוצה לעצור רק את האפליקציה: `Stop App Only`
 - אם אתה רוצה לעצור רק את התשתית: `Stop Infra Only`
 - אם אתה רוצה לכבות הכול: `Stop Full Dev Environment`
+
+שגרת עבודה פשוטה (מומלץ):
+1. בתחילת יום: `Start Full Dev Environment`
+2. במהלך פיתוח (אחרי שינויים): `Restart App Only`
+3. בדיקת מצב: `Show Active Modes`
+4. בסוף יום: `Stop Full Dev Environment`
 
 ## 4. איך מזהים באיזה סביבה אתה עובד עכשיו
 
@@ -85,9 +111,9 @@
 1. `Run Task...` -> `Workspace: Show Active Modes`
 
 תראה שם:
-- `Status` (מצב חי אמיתי כרגע: `running` / `infra_only` / `app_only` / `stopped` / `mixed`)
-- `Frontend Runtime` / `Backend Runtime`
-- `DB Container` / `pgAdmin Container`
+- `Overall Status` (מצב חי אמיתי כרגע: `running` / `infra_only` / `app_only` / `stopped` / `mixed`)
+- `LIVE Frontend` / `LIVE Backend` (UP/DOWN לפי פורטים)
+- `LIVE DB Container` / `LIVE pgAdmin Container` (UP/DOWN לפי Docker)
 - `Configured ...` (הקונפיג האחרון שהוגדר להרצה)
 
 אפשר לראות גם כאן:
@@ -100,8 +126,27 @@
 - בקבצי קוד יש לפעמים `PROD` בתור fallback.
 - זה לא אומר שכרגע אתה על `PROD`.
 - הערך בפועל נקבע מה־Task בזמן הרצה (`APP_ENV`, `ENV_FILE`).
-- `Status` מייצג מה רץ כרגע בפועל.
+- `Status` מייצג את מצב ההרצה האחרון שביקשת (`starting` / `running` / `infra_only` / `stopped`).
 - `Configured ...` מייצג מה הוגדר בפעם האחרונה (לא בהכרח רץ כרגע).
+- מקור האמת למצב בזמן אמת הוא שורות `LIVE ...` (UP/DOWN).
+
+### 4.1 דיבוג תשלומים (שקוף ומהיר)
+
+כדי להבין "על מה לחצו ומה קרה בפועל" בלי לחפש ידנית בין טרמינלים:
+
+1. הרץ:
+`./scripts/debug_payment_snapshot.sh`
+2. הסקריפט מציג:
+- מצב מערכת חי (`show_active_modes`)
+- הסטטוס האחרון מתוך `active-mode.txt`
+- רצף הפעולות האחרון מה־Control Panel
+- אירועי תשלום מה־backend
+- אירועי תשלום מה־frontend
+- הכל מקבצי runtime
+
+לוגי runtime קבועים:
+- backend: `/Users/dwrwnlwy/projects/BB_server/.logs/backend-runtime.log`
+- frontend: `/Users/dwrwnlwy/projects/BB_flutter/.logs/frontend-runtime.log`
 
 ## 5. החלפת סביבות (בלחיצה)
 
@@ -258,12 +303,15 @@ ORDER BY t;
 - `Deploy Web to GitHub Pages`
 
 התנהגות קבועה:
+- לפני build: merge אוטומטי של הענף הנוכחי לתוך `master` ב־`BB_flutter` + push ל־`origin/master`
 - build ב־`release`
 - `APP_ENV=PROD`
 - `DEPLOY_TARGET=github_pages`
+- deploy artifact אל `BB_web/main` (commit + push)
 
 משמעות:
 - האתר ב־GitHub Pages תמיד עובד מול שרת הפרודקשן.
+- ה־Flutter repo נשמר מסודר: קודם `master` מתעדכן, ואז `BB_web` מתעדכן.
 
 ## 11. Deploy לשרת (קוד)
 
@@ -279,27 +327,17 @@ ORDER BY t;
 - בדיקת בטיחות לפני deploy: יעד DB בפרוד חייב להיראות כמו `neon.tech` (נקרא מתוך `.env.production.lock`)
 - בדיקת יציבות: אם `.env.production.lock` שונה לעומת `origin/main`, ה־deploy נחסם כברירת מחדל
 
-משימה מתקדמת בלבד (נדירה):
-- `Advanced: One-Time Force Replace Production main`
-- מיועדת למצב חד־פעמי בלבד שבו מחליפים את `main` בכוח.
-
-משימה חד־פעמית מומלצת רק בפעם הראשונה שבה מכניסים את נעילת הפרוד ל־`main`:
-- `One-Time: Promote Prod DB Lock to main`
-- זו אותה זרימת deploy רגילה, אבל עם הרשאה חד־פעמית לעדכן את `.env.production.lock`.
-
 חשוב:
 - ניתוב ה־DB של פרודקשן מקובע בריפו בקובץ: `.env.production.lock`.
 - בלוקאל עובדים עם `.env.devdb`/`.env.proddb`, אבל הדחיפה לפרוד מוגנת כדי לא לשנות את נעילת הפרוד בטעות.
-- אם אתה רוצה לעדכן בכוונה את קובץ הנעילה של פרודקשן, צריך להריץ עם `ALLOW_PROD_LOCK_UPDATE=1`.
-- אם אתה רוצה לעקוף זמנית את בדיקת Neon (לא מומלץ), אפשר להריץ את הסקריפט עם `REQUIRE_NEON_HOST=0`.
+- אם אתה רוצה לעקוף זמנית את בדיקת Neon (לא מומלץ), אפשר להריץ את הסקריפט ידנית עם `REQUIRE_NEON_HOST=0`.
 
 ## 12. מדיניות ענפים לפרודקשן (כיום)
 
 נכון להיום:
 - ענף הפרודקשן הוא `main`.
 - כרגע הענף המעודכן לעבודה הוא `setup-ops`.
-- אחרי שתבדוק אותו, נריץ פעם אחת את `One-Time: Promote Prod DB Lock to main`.
-- אחר כך נעבוד רק עם משימת ה־merge הרגילה.
+- עובדים רק עם משימת ה־merge הרגילה ל־production.
 
 ## 13. סדר עבודה מומלץ קצר
 
@@ -308,8 +346,6 @@ ORDER BY t;
 3. עבודה רגילה
 4. אם צריך, `Start App Only (FE Local API + BE Dev DB)` או אחד מ־`Workspace: FE ...`
 5. לפני deploy: בדיקת מצב שוב עם `Show Active Modes`
-6. פעם ראשונה בלבד: `One-Time: Promote Prod DB Lock to main`
-7. אחר כך באופן שוטף: `Deploy Server to Production (main)`
-8. רק במקרה חריג: `Advanced: One-Time Force Replace Production main`
-9. `Deploy Web to GitHub Pages` לפי הצורך
-10. `Stop App Only (FE + BE)` או `Stop Full Dev Environment`
+6. Deploy שרת: `Deploy Server to Production (main)`
+7. `Deploy Web to GitHub Pages` לפי הצורך
+8. `Stop App Only (FE + BE)` או `Stop Full Dev Environment`

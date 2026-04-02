@@ -33,7 +33,27 @@ const createTables = async (): Promise<void> => {
     `);
 
     // =====================================
-    // 3. Player Rankings Table
+    // 3. Refresh Tokens Table
+    // Session management for secure long-lived login
+    // =====================================
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+          token_id SERIAL PRIMARY KEY,
+          username VARCHAR(255) NOT NULL,
+          team_id INTEGER NOT NULL,
+          token_hash VARCHAR(255) NOT NULL UNIQUE,
+          issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          expires_at TIMESTAMP NOT NULL,
+          revoked_at TIMESTAMP,
+          user_agent TEXT,
+          ip_address VARCHAR(255),
+          FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE,
+          FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE
+      );
+    `);
+
+    // =====================================
+    // 4. Player Rankings Table
     // =====================================
     await pool.query(`
       CREATE TABLE IF NOT EXISTS player_rankings (
@@ -54,7 +74,7 @@ const createTables = async (): Promise<void> => {
     `);
 
     // =====================================
-    // 4. Next Game Enlistment Table
+    // 5. Next Game Enlistment Table
     // =====================================
     await pool.query(`
       CREATE TABLE IF NOT EXISTS next_game_enlistment (
@@ -68,7 +88,7 @@ const createTables = async (): Promise<void> => {
     `);
 
     // =====================================
-    // 5. Game Teams Table (Pre-game team generation)
+    // 6. Game Teams Table (Pre-game team generation)
     // =====================================
     await pool.query(`
       CREATE TABLE IF NOT EXISTS game_teams (
@@ -78,7 +98,7 @@ const createTables = async (): Promise<void> => {
     `);
 
     // =====================================
-    // 6. Games History Table
+    // 7. Games History Table
     // Stores the actual games that happened
     // =====================================
     await pool.query(`
@@ -94,7 +114,7 @@ const createTables = async (): Promise<void> => {
     `);
 
     // =====================================
-    // 7. Game Attendance Table
+    // 8. Game Attendance Table
     // Who played in which game
     // =====================================
     await pool.query(`
@@ -110,7 +130,7 @@ const createTables = async (): Promise<void> => {
     `);
 
     // =====================================
-    // 8. Payments Table
+    // 9. Payments Table
     // Money tracking
     // =====================================
     await pool.query(`
@@ -137,6 +157,14 @@ const createTables = async (): Promise<void> => {
       await pool.query(`ALTER TABLE game_attendance ADD COLUMN IF NOT EXISTS adjustment_note TEXT;`);
       await pool.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS game_session_id VARCHAR(255) UNIQUE;`);
       await pool.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS client_payment_id VARCHAR(255);`);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS refresh_tokens_user_team_idx
+        ON refresh_tokens (username, team_id);
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS refresh_tokens_active_idx
+        ON refresh_tokens (expires_at, revoked_at);
+      `);
       await pool.query(`
         CREATE UNIQUE INDEX IF NOT EXISTS payments_team_client_payment_id_uq
         ON payments (team_id, client_payment_id)

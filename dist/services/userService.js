@@ -63,7 +63,7 @@ class UserService {
     getAllUsernames(teamId) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const result = yield userModel_1.default.query(`SELECT username FROM users
+                const result = yield userModel_1.default.query(`SELECT username, role FROM users
           WHERE team_id=$1 
           ORDER BY username ASC`, [teamId]);
                 return result.rows;
@@ -206,18 +206,32 @@ class UserService {
         });
     }
     // מחיקת משתמש (שחקן)
-    deleteUser(username) {
+    deleteUser(username, teamId) {
         return __awaiter(this, void 0, void 0, function* () {
             const client = yield userModel_1.default.connect();
             try {
                 yield client.query('BEGIN');
                 const cleanUsername = username.trim();
+                // Validate target user by team scope when teamId is provided.
+                const ownershipCheck = teamId
+                    ? yield client.query('SELECT username FROM users WHERE username = $1 AND team_id = $2', [cleanUsername, teamId])
+                    : yield client.query('SELECT username FROM users WHERE username = $1', [
+                        cleanUsername,
+                    ]);
+                if (ownershipCheck.rows.length === 0) {
+                    throw new Error('User not found in your team');
+                }
                 // Delete from player_rankings (both as rater and rated)
                 yield client.query('DELETE FROM player_rankings WHERE rater_username = $1 OR rated_username = $1', [cleanUsername]);
                 // Delete from next_game_enlistment
                 yield client.query('DELETE FROM next_game_enlistment WHERE username = $1', [cleanUsername]);
                 // Delete from users
-                yield client.query('DELETE FROM users WHERE username = $1', [cleanUsername]);
+                if (teamId) {
+                    yield client.query('DELETE FROM users WHERE username = $1 AND team_id = $2', [cleanUsername, teamId]);
+                }
+                else {
+                    yield client.query('DELETE FROM users WHERE username = $1', [cleanUsername]);
+                }
                 yield client.query('COMMIT');
             }
             catch (err) {
@@ -231,7 +245,7 @@ class UserService {
         });
     }
     // עדכון פרטי משתמש (שחקן)
-    updateUser(currentUsername, newUsername, newEmail, newPassword) {
+    updateUser(currentUsername, newUsername, newEmail, newPassword, teamId) {
         return __awaiter(this, void 0, void 0, function* () {
             const client = yield userModel_1.default.connect();
             try {
@@ -244,7 +258,9 @@ class UserService {
                         throw new Error('Username already exists');
                     }
                     // Get current user details
-                    const currentUserRes = yield client.query('SELECT * FROM users WHERE username = $1', [currentUsername]);
+                    const currentUserRes = teamId
+                        ? yield client.query('SELECT * FROM users WHERE username = $1 AND team_id = $2', [currentUsername, teamId])
+                        : yield client.query('SELECT * FROM users WHERE username = $1', [currentUsername]);
                     if (currentUserRes.rows.length === 0)
                         throw new Error('User not found');
                     const currentUser = currentUserRes.rows[0];
@@ -256,12 +272,23 @@ class UserService {
                     const tempEmail = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}@placeholder.com`;
                     const roleToUse = currentUser.role;
                     yield client.query('INSERT INTO users (username, password, email, team_id, role) VALUES ($1, $2, $3, $4, $5)', [newUsername, passwordToUse, tempEmail, teamIdToUse, roleToUse]);
-                    // Update dependent tables to point to new user
+                    // Update dependent tables to point to the new username before deleting old user.
                     yield client.query('UPDATE player_rankings SET rater_username = $1 WHERE rater_username = $2', [newUsername, currentUsername]);
                     yield client.query('UPDATE player_rankings SET rated_username = $1 WHERE rated_username = $2', [newUsername, currentUsername]);
                     yield client.query('UPDATE next_game_enlistment SET username = $1 WHERE username = $2', [newUsername, currentUsername]);
+                    yield client.query('UPDATE game_attendance SET username = $1 WHERE username = $2', [newUsername, currentUsername]);
+                    yield client.query('UPDATE payments SET username = $1 WHERE username = $2', [
+                        newUsername,
+                        currentUsername,
+                    ]);
+                    yield client.query('UPDATE refresh_tokens SET username = $1 WHERE username = $2', [newUsername, currentUsername]);
                     // Delete old user
-                    yield client.query('DELETE FROM users WHERE username = $1', [currentUsername]);
+                    if (teamId) {
+                        yield client.query('DELETE FROM users WHERE username = $1 AND team_id = $2', [currentUsername, teamId]);
+                    }
+                    else {
+                        yield client.query('DELETE FROM users WHERE username = $1', [currentUsername]);
+                    }
                     // Now update the email of the new user to the correct one
                     yield client.query('UPDATE users SET email = $1 WHERE username = $2', [emailToUse, newUsername]);
                     yield client.query('COMMIT');
@@ -269,7 +296,11 @@ class UserService {
                 }
                 else {
                     // Just updating email/password
-                    const result = yield client.query('UPDATE users SET email = COALESCE($1, email), password = COALESCE($2, password) WHERE username = $3 RETURNING *', [newEmail, newPassword, currentUsername]);
+                    const result = yield client.query(teamId
+                        ? 'UPDATE users SET email = COALESCE($1, email), password = COALESCE($2, password) WHERE username = $3 AND team_id = $4 RETURNING *'
+                        : 'UPDATE users SET email = COALESCE($1, email), password = COALESCE($2, password) WHERE username = $3 RETURNING *', teamId
+                        ? [newEmail, newPassword, currentUsername, teamId]
+                        : [newEmail, newPassword, currentUsername]);
                     if (result.rows.length === 0) {
                         throw new Error('User not found');
                     }
@@ -287,15 +318,42 @@ class UserService {
             }
         });
     }
-    // Update player role (manager/player)
-    updatePlayerRole(username, role) {
+    // Update player role (manager/player/guest)
+    updatePlayerRole(username, role, teamId) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                yield userModel_1.default.query('UPDATE users SET role = $1 WHERE username = $2', [role, username]);
+                const updateRes = yield userModel_1.default.query(teamId
+                    ? 'UPDATE users SET role = $1 WHERE username = $2 AND team_id = $3'
+                    : 'UPDATE users SET role = $1 WHERE username = $2', teamId ? [role, username, teamId] : [role, username]);
+                if (updateRes.rowCount === 0) {
+                    throw new Error('User not found in your team');
+                }
             }
             catch (err) {
                 console.error(err);
-                throw new Error('Failed to update player role');
+                throw new Error(err.message || 'Failed to update player role');
+            }
+        });
+    }
+    // Update email for currently authenticated user only (scoped to team).
+    updateOwnEmail(username, teamId, email) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const result = yield userModel_1.default.query(`UPDATE users
+         SET email = $1
+         WHERE username = $2 AND team_id = $3
+         RETURNING username, email, team_id, role`, [email, username, teamId]);
+                if (result.rows.length === 0) {
+                    throw new Error('User not found in your team');
+                }
+                return result.rows[0];
+            }
+            catch (err) {
+                console.error(err);
+                if ((err === null || err === void 0 ? void 0 : err.code) === '23505') {
+                    throw new Error('Email already exists');
+                }
+                throw new Error(err.message || 'Failed to update email');
             }
         });
     }

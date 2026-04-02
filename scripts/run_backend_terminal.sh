@@ -8,6 +8,7 @@ PORT="${3:?port is required}"
 META_FILE="${4:?meta file is required}"
 PID_FILE="${5:?pid file is required}"
 SERVER_DIR="${6:?server dir is required}"
+LOG_FILE="$(dirname "${META_FILE}")/backend-runtime.log"
 
 is_port_listening() {
   lsof -nP -iTCP:"${PORT}" -sTCP:LISTEN >/dev/null 2>&1
@@ -39,11 +40,16 @@ EOF
 
 echo "$$" > "${PID_FILE}"
 
+# Stable background-safe logging (avoids process-substitution teardown issues).
+exec >> "${LOG_FILE}" 2>&1
+
 printf '\033]1;BB Backend (%s)\007' "${MODE}"
-clear
+clear >/dev/null 2>&1 || true
 echo "=== BB Backend (${MODE}) ==="
 echo "ENV_FILE=${ENV_FILE}"
 echo "Port=${PORT}"
+echo "Log=${LOG_FILE}"
+echo "StartedAt=$(date +"%Y-%m-%d %H:%M:%S %Z")"
 echo
 
 cd "${SERVER_DIR}"

@@ -102,10 +102,10 @@ class UserService {
   // קבלת כל שמות המשתמשים
   public async getAllUsernames(
     teamId: number
-  ): Promise<{ username: string }[]> {
+  ): Promise<{ username: string; role?: string }[]> {
     try {
       const result = await pool.query(
-        `SELECT username FROM users
+        `SELECT username, role FROM users
           WHERE team_id=$1 
           ORDER BY username ASC`,
         [teamId]
@@ -263,21 +263,44 @@ class UserService {
   }
 
   // מחיקת משתמש (שחקן)
-  public async deleteUser(username: string): Promise<void> {
+  public async deleteUser(username: string, teamId?: number): Promise<void> {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
       const cleanUsername = username.trim();
 
+      // Validate target user by team scope when teamId is provided.
+      const ownershipCheck = teamId
+        ? await client.query(
+            'SELECT username FROM users WHERE username = $1 AND team_id = $2',
+            [cleanUsername, teamId]
+          )
+        : await client.query('SELECT username FROM users WHERE username = $1', [
+            cleanUsername,
+          ]);
+      if (ownershipCheck.rows.length === 0) {
+        throw new Error('User not found in your team');
+      }
+
       // Delete from player_rankings (both as rater and rated)
-      await client.query('DELETE FROM player_rankings WHERE rater_username = $1 OR rated_username = $1', [cleanUsername]);
+      await client.query(
+        'DELETE FROM player_rankings WHERE rater_username = $1 OR rated_username = $1',
+        [cleanUsername]
+      );
 
       // Delete from next_game_enlistment
       await client.query('DELETE FROM next_game_enlistment WHERE username = $1', [cleanUsername]);
 
       // Delete from users
-      await client.query('DELETE FROM users WHERE username = $1', [cleanUsername]);
+      if (teamId) {
+        await client.query(
+          'DELETE FROM users WHERE username = $1 AND team_id = $2',
+          [cleanUsername, teamId]
+        );
+      } else {
+        await client.query('DELETE FROM users WHERE username = $1', [cleanUsername]);
+      }
 
       await client.query('COMMIT');
     } catch (err: any) {
@@ -290,7 +313,13 @@ class UserService {
   }
 
   // עדכון פרטי משתמש (שחקן)
-  public async updateUser(currentUsername: string, newUsername: string, newEmail?: string, newPassword?: string): Promise<User> {
+  public async updateUser(
+    currentUsername: string,
+    newUsername: string,
+    newEmail?: string,
+    newPassword?: string,
+    teamId?: number
+  ): Promise<User> {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -304,7 +333,12 @@ class UserService {
         }
 
         // Get current user details
-        const currentUserRes = await client.query('SELECT * FROM users WHERE username = $1', [currentUsername]);
+        const currentUserRes = teamId
+          ? await client.query(
+              'SELECT * FROM users WHERE username = $1 AND team_id = $2',
+              [currentUsername, teamId]
+            )
+          : await client.query('SELECT * FROM users WHERE username = $1', [currentUsername]);
         if (currentUserRes.rows.length === 0) throw new Error('User not found');
         const currentUser = currentUserRes.rows[0];
 
@@ -322,13 +356,41 @@ class UserService {
           [newUsername, passwordToUse, tempEmail, teamIdToUse, roleToUse]
         );
 
-        // Update dependent tables to point to new user
-        await client.query('UPDATE player_rankings SET rater_username = $1 WHERE rater_username = $2', [newUsername, currentUsername]);
-        await client.query('UPDATE player_rankings SET rated_username = $1 WHERE rated_username = $2', [newUsername, currentUsername]);
-        await client.query('UPDATE next_game_enlistment SET username = $1 WHERE username = $2', [newUsername, currentUsername]);
+        // Update dependent tables to point to the new username before deleting old user.
+        await client.query(
+          'UPDATE player_rankings SET rater_username = $1 WHERE rater_username = $2',
+          [newUsername, currentUsername]
+        );
+        await client.query(
+          'UPDATE player_rankings SET rated_username = $1 WHERE rated_username = $2',
+          [newUsername, currentUsername]
+        );
+        await client.query(
+          'UPDATE next_game_enlistment SET username = $1 WHERE username = $2',
+          [newUsername, currentUsername]
+        );
+        await client.query(
+          'UPDATE game_attendance SET username = $1 WHERE username = $2',
+          [newUsername, currentUsername]
+        );
+        await client.query('UPDATE payments SET username = $1 WHERE username = $2', [
+          newUsername,
+          currentUsername,
+        ]);
+        await client.query(
+          'UPDATE refresh_tokens SET username = $1 WHERE username = $2',
+          [newUsername, currentUsername]
+        );
 
         // Delete old user
-        await client.query('DELETE FROM users WHERE username = $1', [currentUsername]);
+        if (teamId) {
+          await client.query(
+            'DELETE FROM users WHERE username = $1 AND team_id = $2',
+            [currentUsername, teamId]
+          );
+        } else {
+          await client.query('DELETE FROM users WHERE username = $1', [currentUsername]);
+        }
 
         // Now update the email of the new user to the correct one
         await client.query('UPDATE users SET email = $1 WHERE username = $2', [emailToUse, newUsername]);
@@ -339,8 +401,12 @@ class UserService {
       } else {
         // Just updating email/password
         const result = await client.query(
-          'UPDATE users SET email = COALESCE($1, email), password = COALESCE($2, password) WHERE username = $3 RETURNING *',
-          [newEmail, newPassword, currentUsername]
+          teamId
+            ? 'UPDATE users SET email = COALESCE($1, email), password = COALESCE($2, password) WHERE username = $3 AND team_id = $4 RETURNING *'
+            : 'UPDATE users SET email = COALESCE($1, email), password = COALESCE($2, password) WHERE username = $3 RETURNING *',
+          teamId
+            ? [newEmail, newPassword, currentUsername, teamId]
+            : [newEmail, newPassword, currentUsername]
         );
 
         if (result.rows.length === 0) {
@@ -359,16 +425,54 @@ class UserService {
     }
   }
 
-  // Update player role (manager/player)
-  public async updatePlayerRole(username: string, role: string): Promise<void> {
+  // Update player role (manager/player/guest)
+  public async updatePlayerRole(
+    username: string,
+    role: string,
+    teamId?: number
+  ): Promise<void> {
     try {
-      await pool.query(
-        'UPDATE users SET role = $1 WHERE username = $2',
-        [role, username]
+      const updateRes = await pool.query(
+        teamId
+          ? 'UPDATE users SET role = $1 WHERE username = $2 AND team_id = $3'
+          : 'UPDATE users SET role = $1 WHERE username = $2',
+        teamId ? [role, username, teamId] : [role, username]
       );
+      if (updateRes.rowCount === 0) {
+        throw new Error('User not found in your team');
+      }
     } catch (err: any) {
       console.error(err);
-      throw new Error('Failed to update player role');
+      throw new Error(err.message || 'Failed to update player role');
+    }
+  }
+
+  // Update email for currently authenticated user only (scoped to team).
+  public async updateOwnEmail(
+    username: string,
+    teamId: number,
+    email: string
+  ): Promise<Pick<User, 'username' | 'email' | 'team_id' | 'role'>> {
+    try {
+      const result = await pool.query(
+        `UPDATE users
+         SET email = $1
+         WHERE username = $2 AND team_id = $3
+         RETURNING username, email, team_id, role`,
+        [email, username, teamId]
+      );
+
+      if (result.rows.length === 0) {
+        throw new Error('User not found in your team');
+      }
+
+      return result.rows[0];
+    } catch (err: any) {
+      console.error(err);
+      if (err?.code === '23505') {
+        throw new Error('Email already exists');
+      }
+      throw new Error(err.message || 'Failed to update email');
     }
   }
 }

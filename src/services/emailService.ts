@@ -1,10 +1,17 @@
 import nodemailer from 'nodemailer';
 
+export interface PaymentEmailResult {
+    attempted: boolean;
+    sent: boolean;
+    reason?: 'smtp_not_configured' | 'missing_recipient_email' | 'send_failed';
+}
+
 // Create reusable transporter
+const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false, // true for 465, false for other ports
+    port: smtpPort,
+    secure: smtpPort === 465, // true for 465, false for STARTTLS ports
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -17,11 +24,23 @@ export async function sendPaymentConfirmationEmail(
     amount: number,
     method: string,
     date: Date
-): Promise<void> {
+): Promise<PaymentEmailResult> {
+    if (!recipientEmail || recipientEmail.trim() == '') {
+        return {
+            attempted: false,
+            sent: false,
+            reason: 'missing_recipient_email',
+        };
+    }
+
     // Skip if email not configured
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
         console.log('Email not configured. Skipping payment confirmation email.');
-        return;
+        return {
+            attempted: false,
+            sent: false,
+            reason: 'smtp_not_configured',
+        };
     }
 
     const formattedDate = new Date(date).toLocaleDateString('he-IL');
@@ -53,8 +72,17 @@ export async function sendPaymentConfirmationEmail(
     try {
         await transporter.sendMail(mailOptions);
         console.log(`Payment confirmation email sent to ${recipientEmail}`);
+        return {
+            attempted: true,
+            sent: true,
+        };
     } catch (error) {
         console.error('Error sending email:', error);
         // Don't throw - we don't want email failures to block payment recording
+        return {
+            attempted: true,
+            sent: false,
+            reason: 'send_failed',
+        };
     }
 }

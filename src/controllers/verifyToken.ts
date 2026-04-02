@@ -19,6 +19,15 @@ export const verifyToken = (
   res: Response,
   next: NextFunction
 ): void => {
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (!jwtSecret) {
+    res
+      .status(500)
+      .json({ success: false, message: 'Server JWT is not configured.' });
+    return;
+  }
+
   const token = req.header('Authorization')?.replace('Bearer ', '');
 
   if (!token) {
@@ -29,13 +38,14 @@ export const verifyToken = (
   }
 
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET as string
-    ) as UserPayload;
+    const decoded = jwt.verify(token, jwtSecret) as UserPayload;
     req.user = decoded; // TypeScript כעת יבין את המבנה של `req.user`
     next();
-  } catch (ex) {
-    res.status(400).json({ success: false, message: 'Invalid token.' });
+  } catch (ex: any) {
+    if (ex?.name === 'TokenExpiredError') {
+      res.status(401).json({ success: false, message: 'Token expired.' });
+      return;
+    }
+    res.status(401).json({ success: false, message: 'Invalid token.' });
   }
 };
