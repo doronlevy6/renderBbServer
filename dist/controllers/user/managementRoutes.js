@@ -16,6 +16,7 @@ exports.registerManagementRoutes = registerManagementRoutes;
 const userService_1 = __importDefault(require("../../services/userService"));
 const verifyToken_1 = require("../verifyToken");
 const authz_1 = require("../authz");
+const socket_1 = require("../../socket/socket");
 const ALLOWED_ROLES = new Set(['manager', 'player', 'guest']);
 const normalizeRole = (value) => {
     if (typeof value !== 'string')
@@ -131,6 +132,11 @@ function registerManagementRoutes(router) {
                 return;
             }
             const user = yield userService_1.default.createUser(cleanUsername, cleanPassword, cleanEmail, requesterTeamId, cleanRole);
+            (0, socket_1.emitToTeam)(requesterTeamId, 'financeSummaryUpdated', {
+                success: true,
+                team_id: requesterTeamId,
+                source: 'add-player',
+            });
             res.status(201).json({ success: true, user });
         }
         catch (err) {
@@ -149,6 +155,11 @@ function registerManagementRoutes(router) {
                 return;
             }
             yield userService_1.default.deleteUser(username, requesterTeamId);
+            (0, socket_1.emitToTeam)(requesterTeamId, 'financeSummaryUpdated', {
+                success: true,
+                team_id: requesterTeamId,
+                source: 'delete-player',
+            });
             res
                 .status(200)
                 .json({ success: true, message: 'Player deleted successfully' });
@@ -179,6 +190,11 @@ function registerManagementRoutes(router) {
                 return;
             }
             const user = yield userService_1.default.updateUser(username, normalizedUsername, normalizedEmail, normalizedPassword, requesterTeamId);
+            (0, socket_1.emitToTeam)(requesterTeamId, 'financeSummaryUpdated', {
+                success: true,
+                team_id: requesterTeamId,
+                source: 'update-player',
+            });
             res.status(200).json({ success: true, user });
         }
         catch (err) {
@@ -216,6 +232,11 @@ function registerManagementRoutes(router) {
                 }
                 yield userService_1.default.updatePlayerRole(update.username, cleanRole, requesterTeamId);
             }
+            (0, socket_1.emitToTeam)(requesterTeamId, 'financeSummaryUpdated', {
+                success: true,
+                team_id: requesterTeamId,
+                source: 'update-player-roles',
+            });
             res
                 .status(200)
                 .json({ success: true, message: 'Roles updated successfully' });

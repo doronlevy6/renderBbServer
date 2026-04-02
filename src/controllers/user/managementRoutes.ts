@@ -2,6 +2,7 @@ import { Request, Response, Router } from 'express';
 import userService from '../../services/userService';
 import { verifyToken } from '../verifyToken';
 import { requireManager } from '../authz';
+import { emitToTeam } from '../../socket/socket';
 
 const ALLOWED_ROLES = new Set(['manager', 'player', 'guest']);
 
@@ -142,6 +143,11 @@ export function registerManagementRoutes(router: Router): void {
         requesterTeamId,
         cleanRole
       );
+      emitToTeam(requesterTeamId, 'financeSummaryUpdated', {
+        success: true,
+        team_id: requesterTeamId,
+        source: 'add-player',
+      });
       res.status(201).json({ success: true, user });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
@@ -163,6 +169,11 @@ export function registerManagementRoutes(router: Router): void {
           return;
         }
         await userService.deleteUser(username, requesterTeamId);
+        emitToTeam(requesterTeamId, 'financeSummaryUpdated', {
+          success: true,
+          team_id: requesterTeamId,
+          source: 'delete-player',
+        });
         res
           .status(200)
           .json({ success: true, message: 'Player deleted successfully' });
@@ -208,6 +219,11 @@ export function registerManagementRoutes(router: Router): void {
           normalizedPassword,
           requesterTeamId
         );
+        emitToTeam(requesterTeamId, 'financeSummaryUpdated', {
+          success: true,
+          team_id: requesterTeamId,
+          source: 'update-player',
+        });
         res.status(200).json({ success: true, user });
       } catch (err: any) {
         res.status(500).json({ success: false, message: err.message });
@@ -259,6 +275,12 @@ export function registerManagementRoutes(router: Router): void {
             requesterTeamId
           );
         }
+
+        emitToTeam(requesterTeamId, 'financeSummaryUpdated', {
+          success: true,
+          team_id: requesterTeamId,
+          source: 'update-player-roles',
+        });
 
         res
           .status(200)
