@@ -18,6 +18,20 @@ const userService_1 = __importDefault(require("../../services/userService"));
 const teamService_1 = __importDefault(require("../../services/teamService"));
 const userModel_1 = __importDefault(require("../../models/userModel"));
 const sessionTokenService_1 = __importDefault(require("../../services/sessionTokenService"));
+function parseJwtExpiresIn(rawValue) {
+    const fallback = '45d';
+    if (!rawValue)
+        return fallback;
+    const normalized = rawValue.trim();
+    if (normalized === '')
+        return fallback;
+    // Accept pure numeric values as seconds.
+    if (/^\d+$/.test(normalized)) {
+        return Number(normalized);
+    }
+    // Duration strings like 45d/12h are valid for jsonwebtoken.
+    return normalized;
+}
 function getClientIp(req) {
     const forwarded = req.headers['x-forwarded-for'];
     if (typeof forwarded === 'string' && forwarded.trim() !== '') {
@@ -30,7 +44,8 @@ function buildAccessToken(payload, jwtSecret, jwtExpiresIn) {
 }
 function registerAuthRoutes(router) {
     const jwtSecret = process.env.JWT_SECRET;
-    const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '45d';
+    const jwtExpiresIn = parseJwtExpiresIn(process.env.JWT_EXPIRES_IN);
+    const jwtExpiresInLabel = String(jwtExpiresIn);
     // Team creation functionality (used by registration flow).
     router.post('/create-team', (req, res) => __awaiter(this, void 0, void 0, function* () {
         const { team_name, team_password, team_type } = req.body;
@@ -144,7 +159,7 @@ function registerAuthRoutes(router) {
                     token,
                     refresh_token: refreshTokenSession.refreshToken,
                     is_admin: isAdmin,
-                    token_expires_in: jwtExpiresIn,
+                    token_expires_in: jwtExpiresInLabel,
                     refresh_token_expires_in: refreshTokenSession.refreshTokenExpiresIn,
                 });
             }
@@ -196,7 +211,7 @@ function registerAuthRoutes(router) {
                 success: true,
                 token: accessToken,
                 refresh_token: rotated.refreshToken,
-                token_expires_in: jwtExpiresIn,
+                token_expires_in: jwtExpiresInLabel,
                 refresh_token_expires_in: rotated.refreshTokenExpiresIn,
                 is_admin: role === 'manager',
                 user: {
