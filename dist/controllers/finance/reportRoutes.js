@@ -16,10 +16,84 @@ exports.registerFinanceReportRoutes = registerFinanceReportRoutes;
 const userModel_1 = __importDefault(require("../../models/userModel"));
 const verifyToken_1 = require("../verifyToken");
 const authz_1 = require("../authz");
+function getPlayerFinancialPayload(teamId, username) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b, _c, _d, _e;
+        const attendanceQuery = `
+        SELECT ga.attendance_id, ga.applied_cost, ga.adjustment_note, g.date, g.game_id, g.notes
+        FROM game_attendance ga
+        JOIN games g ON ga.game_id = g.game_id
+        WHERE ga.username = $1 AND g.team_id = $2
+        ORDER BY g.date DESC
+    `;
+        const attendanceRes = yield userModel_1.default.query(attendanceQuery, [username, teamId]);
+        const paymentsQuery = `
+        SELECT payment_id, amount, method, date, notes
+        FROM payments
+        WHERE username = $1 AND team_id = $2
+        ORDER BY date DESC NULLS LAST, payment_id DESC
+    `;
+        const paymentsRes = yield userModel_1.default.query(paymentsQuery, [username, teamId]);
+        const totalCost = attendanceRes.rows.reduce((sum, record) => sum + record.applied_cost, 0);
+        const totalPaid = paymentsRes.rows.reduce((sum, record) => sum + record.amount, 0);
+        const balance = totalPaid - totalCost;
+        const userRes = yield userModel_1.default.query('SELECT custom_game_cost FROM users WHERE username = $1 AND team_id = $2', [username, teamId]);
+        const customCost = (_b = (_a = userRes.rows[0]) === null || _a === void 0 ? void 0 : _a.custom_game_cost) !== null && _b !== void 0 ? _b : null;
+        const teamRes = yield userModel_1.default.query('SELECT default_game_cost FROM teams WHERE team_id = $1', [teamId]);
+        const defaultCost = (_d = (_c = teamRes.rows[0]) === null || _c === void 0 ? void 0 : _c.default_game_cost) !== null && _d !== void 0 ? _d : 30;
+        const costPerGame = customCost !== null && customCost !== void 0 ? customCost : defaultCost;
+        let gamesEquivalent = 0;
+        let remainder = balance;
+        if (costPerGame > 0) {
+            if (balance >= 0) {
+                gamesEquivalent = Math.floor(balance / costPerGame);
+            }
+            else {
+                const debtAbs = -balance;
+                const debtGames = Math.ceil(debtAbs / costPerGame);
+                gamesEquivalent = -debtGames;
+            }
+            remainder = balance - gamesEquivalent * costPerGame;
+        }
+        const lastPayment = paymentsRes.rows.length > 0 ? paymentsRes.rows[0] : null;
+        return {
+            balance,
+            totalCost,
+            totalPaid,
+            customGameCost: customCost,
+            costPerGame,
+            gamesEquivalent,
+            remainder,
+            gamesPlayed: attendanceRes.rows.length,
+            lastPaymentAmount: (lastPayment === null || lastPayment === void 0 ? void 0 : lastPayment.amount) == null ? null : parseInt(String(lastPayment.amount), 10),
+            lastPaymentDate: (_e = lastPayment === null || lastPayment === void 0 ? void 0 : lastPayment.date) !== null && _e !== void 0 ? _e : null,
+            history: {
+                games: attendanceRes.rows,
+                payments: paymentsRes.rows,
+            },
+        };
+    });
+}
 function registerFinanceReportRoutes(router) {
+    // Current user's wallet details (always own user).
+    router.get('/my-financials', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
+        const team_id = (0, authz_1.getTeamId)(req);
+        const requester = (0, authz_1.getUsername)(req);
+        if (!team_id || !requester) {
+            res.status(400).json({ success: false, message: 'Team identification failed' });
+            return;
+        }
+        try {
+            const payload = yield getPlayerFinancialPayload(team_id, requester);
+            res.status(200).json(Object.assign({ success: true }, payload));
+        }
+        catch (error) {
+            console.error('Error fetching my financials:', error);
+            res.status(500).json({ success: false, message: 'Internal server error' });
+        }
+    }));
     // Financial details: manager can read any team member, player can read only self.
     router.get('/player-financials/:username', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
-        var _a;
         const { username } = req.params;
         const team_id = (0, authz_1.getTeamId)(req);
         const requester = (0, authz_1.getUsername)(req);
@@ -33,41 +107,8 @@ function registerFinanceReportRoutes(router) {
             return;
         }
         try {
-            // 1. Get Games Attended
-            const attendanceQuery = `
-            SELECT ga.attendance_id, ga.applied_cost, ga.adjustment_note, g.date, g.game_id, g.notes
-            FROM game_attendance ga
-            JOIN games g ON ga.game_id = g.game_id
-            WHERE ga.username = $1 AND g.team_id = $2
-            ORDER BY g.date DESC
-        `;
-            const attendanceRes = yield userModel_1.default.query(attendanceQuery, [username, team_id]);
-            // 2. Get Payments Made
-            const paymentsQuery = `
-            SELECT payment_id, amount, method, date, notes
-            FROM payments
-            WHERE username = $1 AND team_id = $2
-            ORDER BY date DESC NULLS LAST, payment_id DESC
-        `;
-            const paymentsRes = yield userModel_1.default.query(paymentsQuery, [username, team_id]);
-            // 3. Calculate Balance
-            const totalCost = attendanceRes.rows.reduce((sum, record) => sum + record.applied_cost, 0);
-            const totalPaid = paymentsRes.rows.reduce((sum, record) => sum + record.amount, 0);
-            const balance = totalPaid - totalCost; // Positive = Credit, Negative = Debt
-            // 4. Get User Settings (Custom Cost)
-            const userRes = yield userModel_1.default.query('SELECT custom_game_cost FROM users WHERE username = $1 AND team_id = $2', [username, team_id]);
-            const customCost = ((_a = userRes.rows[0]) === null || _a === void 0 ? void 0 : _a.custom_game_cost) || null;
-            res.status(200).json({
-                success: true,
-                balance,
-                totalCost,
-                totalPaid,
-                customGameCost: customCost,
-                history: {
-                    games: attendanceRes.rows,
-                    payments: paymentsRes.rows
-                }
-            });
+            const payload = yield getPlayerFinancialPayload(team_id, username);
+            res.status(200).json(Object.assign({ success: true }, payload));
         }
         catch (error) {
             console.error('Error fetching player financials:', error);

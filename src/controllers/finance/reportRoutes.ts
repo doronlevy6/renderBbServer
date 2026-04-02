@@ -3,7 +3,124 @@ import pool from '../../models/userModel';
 import { verifyToken } from '../verifyToken';
 import { getTeamId, getUsername, isManager, requireManager } from '../authz';
 
+interface PlayerFinancialPayload {
+  balance: number;
+  totalCost: number;
+  totalPaid: number;
+  customGameCost: number | null;
+  costPerGame: number;
+  gamesEquivalent: number;
+  remainder: number;
+  gamesPlayed: number;
+  lastPaymentAmount: number | null;
+  lastPaymentDate: string | null;
+  history: {
+    games: any[];
+    payments: any[];
+  };
+}
+
+async function getPlayerFinancialPayload(
+  teamId: number,
+  username: string
+): Promise<PlayerFinancialPayload> {
+  const attendanceQuery = `
+        SELECT ga.attendance_id, ga.applied_cost, ga.adjustment_note, g.date, g.game_id, g.notes
+        FROM game_attendance ga
+        JOIN games g ON ga.game_id = g.game_id
+        WHERE ga.username = $1 AND g.team_id = $2
+        ORDER BY g.date DESC
+    `;
+  const attendanceRes = await pool.query(attendanceQuery, [username, teamId]);
+
+  const paymentsQuery = `
+        SELECT payment_id, amount, method, date, notes
+        FROM payments
+        WHERE username = $1 AND team_id = $2
+        ORDER BY date DESC NULLS LAST, payment_id DESC
+    `;
+  const paymentsRes = await pool.query(paymentsQuery, [username, teamId]);
+
+  const totalCost = attendanceRes.rows.reduce(
+    (sum: number, record: any) => sum + record.applied_cost,
+    0
+  );
+  const totalPaid = paymentsRes.rows.reduce(
+    (sum: number, record: any) => sum + record.amount,
+    0
+  );
+  const balance = totalPaid - totalCost;
+
+  const userRes = await pool.query(
+    'SELECT custom_game_cost FROM users WHERE username = $1 AND team_id = $2',
+    [username, teamId]
+  );
+  const customCost = userRes.rows[0]?.custom_game_cost ?? null;
+
+  const teamRes = await pool.query(
+    'SELECT default_game_cost FROM teams WHERE team_id = $1',
+    [teamId]
+  );
+  const defaultCost = teamRes.rows[0]?.default_game_cost ?? 30;
+  const costPerGame = customCost ?? defaultCost;
+
+  let gamesEquivalent = 0;
+  let remainder = balance;
+  if (costPerGame > 0) {
+    if (balance >= 0) {
+      gamesEquivalent = Math.floor(balance / costPerGame);
+    } else {
+      const debtAbs = -balance;
+      const debtGames = Math.ceil(debtAbs / costPerGame);
+      gamesEquivalent = -debtGames;
+    }
+    remainder = balance - gamesEquivalent * costPerGame;
+  }
+
+  const lastPayment = paymentsRes.rows.length > 0 ? paymentsRes.rows[0] : null;
+
+  return {
+    balance,
+    totalCost,
+    totalPaid,
+    customGameCost: customCost,
+    costPerGame,
+    gamesEquivalent,
+    remainder,
+    gamesPlayed: attendanceRes.rows.length,
+    lastPaymentAmount:
+      lastPayment?.amount == null ? null : parseInt(String(lastPayment.amount), 10),
+    lastPaymentDate: lastPayment?.date ?? null,
+    history: {
+      games: attendanceRes.rows,
+      payments: paymentsRes.rows,
+    },
+  };
+}
+
 export function registerFinanceReportRoutes(router: Router): void {
+  // Current user's wallet details (always own user).
+  router.get('/my-financials', verifyToken, async (req: Request, res: Response) => {
+    const team_id = getTeamId(req);
+    const requester = getUsername(req);
+
+    if (!team_id || !requester) {
+      res.status(400).json({ success: false, message: 'Team identification failed' });
+      return;
+    }
+
+    try {
+      const payload = await getPlayerFinancialPayload(team_id, requester);
+      res.status(200).json({
+        success: true,
+        ...payload
+      });
+    } catch (error: any) {
+      console.error('Error fetching my financials:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  });
+
   // Financial details: manager can read any team member, player can read only self.
   router.get('/player-financials/:username', verifyToken, async (req: Request, res: Response) => {
     const { username } = req.params;
@@ -21,47 +138,10 @@ export function registerFinanceReportRoutes(router: Router): void {
     }
 
     try {
-      // 1. Get Games Attended
-      const attendanceQuery = `
-            SELECT ga.attendance_id, ga.applied_cost, ga.adjustment_note, g.date, g.game_id, g.notes
-            FROM game_attendance ga
-            JOIN games g ON ga.game_id = g.game_id
-            WHERE ga.username = $1 AND g.team_id = $2
-            ORDER BY g.date DESC
-        `;
-      const attendanceRes = await pool.query(attendanceQuery, [username, team_id]);
-
-      // 2. Get Payments Made
-      const paymentsQuery = `
-            SELECT payment_id, amount, method, date, notes
-            FROM payments
-            WHERE username = $1 AND team_id = $2
-            ORDER BY date DESC NULLS LAST, payment_id DESC
-        `;
-      const paymentsRes = await pool.query(paymentsQuery, [username, team_id]);
-
-      // 3. Calculate Balance
-      const totalCost = attendanceRes.rows.reduce((sum: number, record: any) => sum + record.applied_cost, 0);
-      const totalPaid = paymentsRes.rows.reduce((sum: number, record: any) => sum + record.amount, 0);
-      const balance = totalPaid - totalCost; // Positive = Credit, Negative = Debt
-
-      // 4. Get User Settings (Custom Cost)
-      const userRes = await pool.query(
-        'SELECT custom_game_cost FROM users WHERE username = $1 AND team_id = $2',
-        [username, team_id]
-      );
-      const customCost = userRes.rows[0]?.custom_game_cost || null;
-
+      const payload = await getPlayerFinancialPayload(team_id, username);
       res.status(200).json({
         success: true,
-        balance,
-        totalCost,
-        totalPaid,
-        customGameCost: customCost,
-        history: {
-          games: attendanceRes.rows,
-          payments: paymentsRes.rows
-        }
+        ...payload
       });
     } catch (error: any) {
       console.error('Error fetching player financials:', error);
