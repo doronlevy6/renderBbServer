@@ -24,6 +24,11 @@ const normalizeRole = (value) => {
     const role = value.trim().toLowerCase();
     return role === '' ? 'player' : role;
 };
+const firstParam = (value) => {
+    if (Array.isArray(value))
+        return value[0] || '';
+    return value || '';
+};
 function registerManagementRoutes(router) {
     // Public list of teams for registration/login flows.
     router.get('/teams', (_req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -154,7 +159,7 @@ function registerManagementRoutes(router) {
                 res.status(400).json({ success: false, message: 'Team identification failed' });
                 return;
             }
-            yield userService_1.default.deleteUser(username, requesterTeamId);
+            yield userService_1.default.deleteUser(firstParam(username), requesterTeamId);
             (0, socket_1.emitToTeam)(requesterTeamId, 'financeSummaryUpdated', {
                 success: true,
                 team_id: requesterTeamId,
@@ -189,8 +194,7 @@ function registerManagementRoutes(router) {
                 res.status(400).json({ success: false, message: 'Team identification failed' });
                 return;
             }
-            const currentUsername = Array.isArray(username) ? username[0] : username;
-            const user = yield userService_1.default.updateUser(currentUsername, normalizedUsername, normalizedEmail, normalizedPassword, requesterTeamId);
+            const user = yield userService_1.default.updateUser(firstParam(username), normalizedUsername, normalizedEmail, normalizedPassword, requesterTeamId);
             (0, socket_1.emitToTeam)(requesterTeamId, 'financeSummaryUpdated', {
                 success: true,
                 team_id: requesterTeamId,

@@ -12,6 +12,11 @@ const normalizeRole = (value: unknown): string => {
   return role === '' ? 'player' : role;
 };
 
+const firstParam = (value: string | string[] | undefined): string => {
+  if (Array.isArray(value)) return value[0] || '';
+  return value || '';
+};
+
 export function registerManagementRoutes(router: Router): void {
   // Public list of teams for registration/login flows.
   router.get('/teams', async (_req: Request, res: Response) => {
@@ -168,7 +173,7 @@ export function registerManagementRoutes(router: Router): void {
           res.status(400).json({ success: false, message: 'Team identification failed' });
           return;
         }
-        await userService.deleteUser(username, requesterTeamId);
+        await userService.deleteUser(firstParam(username), requesterTeamId);
         emitToTeam(requesterTeamId, 'financeSummaryUpdated', {
           success: true,
           team_id: requesterTeamId,
@@ -212,9 +217,8 @@ export function registerManagementRoutes(router: Router): void {
           res.status(400).json({ success: false, message: 'Team identification failed' });
           return;
         }
-        const currentUsername = Array.isArray(username) ? username[0] : username;
         const user = await userService.updateUser(
-          currentUsername,
+          firstParam(username),
           normalizedUsername,
           normalizedEmail,
           normalizedPassword,
