@@ -70,6 +70,19 @@ wait_for_app_ports() {
   return 1
 }
 
+wait_for_frontend_port() {
+  local timeout_seconds="${1:-30}"
+  local waited=0
+  while (( waited < timeout_seconds )); do
+    if is_port_listening "${FRONTEND_PORT}"; then
+      return 0
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  return 1
+}
+
 run_step_wait_for_app() {
   local title="$1"
   local cmd="$2"
@@ -97,6 +110,33 @@ run_step_wait_for_app() {
   )
 }
 
+run_step_wait_for_frontend() {
+  local title="$1"
+  local cmd="$2"
+  run_step "${title}" "${cmd}"
+  if [[ "${LAST_STEP_OK}" != "1" ]]; then
+    echo
+    echo "Skipping frontend wait because step failed."
+    return 0
+  fi
+
+  echo
+  echo "=== Waiting For Frontend Port ==="
+  if wait_for_frontend_port 90; then
+    echo "Frontend is up on port ${FRONTEND_PORT}."
+    log_action "FE_WAIT_OK | ${title}"
+  else
+    echo "Frontend is still starting. Check status/logs below."
+    log_action "FE_WAIT_TIMEOUT | ${title}"
+  fi
+  echo
+  echo "=== Post-Wait Status ==="
+  (
+    cd "${SERVER_DIR}"
+    bash ./scripts/show_active_modes.sh | tee -a "${ACTION_LOG}"
+  )
+}
+
 print_menu() {
   cat <<EOF
 
@@ -104,17 +144,18 @@ print_menu() {
  App processes start automatically in background (stable mode).
  Version: ${PANEL_VERSION}
  1) Start Full Dev (FE local + BE dev + infra)
- 2) Start Infra Only (Docker + DB + pgAdmin + open UI)
- 3) Start App Only (FE local + BE dev)
- 4) Stop App Only
- 5) Stop Infra Only
- 6) Stop Full
- 7) Show Active Modes
- 8) Open pgAdmin UI
- 9) Refresh Dev DB From Prod
-10) Deploy Web to GitHub Pages
-11) Deploy Server to Production (main)
-12) Restart App Only (FE + BE, keep infra)
+ 2) Restart Frontend Only (Fast)
+ 3) Start Infra Only (Docker + DB + pgAdmin + open UI)
+ 4) Start App Only (FE local + BE dev)
+ 5) Stop App Only
+ 6) Stop Infra Only
+ 7) Stop Full
+ 8) Show Active Modes
+ 9) Open pgAdmin UI
+10) Refresh Dev DB From Prod
+11) Deploy Web to GitHub Pages
+12) Deploy Server to Production (main)
+13) Restart App Only (FE + BE, keep infra)
  0) Exit
 ==============================================================
 EOF
@@ -132,46 +173,51 @@ main() {
           "OPEN_PGADMIN_UI=1 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=1 ./scripts/start_full_dev_environment.sh"
         ;;
       2)
+        run_step_wait_for_frontend \
+          "Restart Frontend Only (Fast)" \
+          "./scripts/restart_frontend_only.sh"
+        ;;
+      3)
         run_step \
           "Start Infra Only" \
           "OPEN_PGADMIN_UI=1 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh"
         ;;
-      3)
+      4)
         run_step_wait_for_app \
           "Start App Only" \
           "OPEN_PGADMIN_UI=0 START_PGADMIN_CONTAINER=0 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=1 ./scripts/start_full_dev_environment.sh"
         ;;
-      4)
+      5)
         run_step \
           "Stop App Only" \
           "STOP_INFRA_CONTAINERS=0 ./scripts/stop_full_dev_environment.sh"
         ;;
-      5)
+      6)
         run_step \
           "Stop Infra Only" \
           "STOP_APP_PROCESSES=0 ./scripts/stop_full_dev_environment.sh"
         ;;
-      6)
+      7)
         run_step \
           "Stop Full Dev Environment" \
           "./scripts/stop_full_dev_environment.sh"
         ;;
-      7)
+      8)
         run_step \
           "Show Active Modes" \
           "bash ./scripts/show_active_modes.sh"
         ;;
-      8)
+      9)
         run_step \
           "Open pgAdmin UI" \
           "OPEN_PGADMIN_UI=1 START_APP_PROCESSES=0 ./scripts/start_full_dev_environment.sh"
         ;;
-      9)
+      10)
         run_step \
           "Refresh Dev DB From Prod" \
           "./scripts/refresh_dev_db_from_prod.sh"
         ;;
-      10)
+      11)
         echo
         echo "=== Deploy Web to GitHub Pages ==="
         (
@@ -181,12 +227,12 @@ main() {
         echo
         echo "Done: Deploy Web to GitHub Pages"
         ;;
-      11)
+      12)
         run_step \
           "Deploy Server to Production (main)" \
           "./scripts/merge_server_branch_to_main.sh"
         ;;
-      12)
+      13)
         run_step \
           "Stop App Only" \
           "STOP_INFRA_CONTAINERS=0 ./scripts/stop_full_dev_environment.sh"
