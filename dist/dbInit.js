@@ -151,6 +151,55 @@ const createTables = () => __awaiter(void 0, void 0, void 0, function* () {
           FOREIGN KEY (team_id) REFERENCES teams(team_id)
       );
     `);
+        // =====================================
+        // 10. Hall Payments Settings
+        // Tracks gym/hall costs separately from player payments
+        // =====================================
+        yield userModel_1.default.query(`
+      CREATE TABLE IF NOT EXISTS hall_settings (
+          team_id INTEGER PRIMARY KEY,
+          default_game_cost INTEGER NOT NULL DEFAULT 200,
+          tracking_start_date DATE DEFAULT '2025-10-05',
+          opening_note TEXT DEFAULT 'Paid 4000 on 2025-09-11, covered through 2025-10-04',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE
+      );
+    `);
+        // =====================================
+        // 11. Hall Games
+        // Games that count toward hall/gym payments
+        // =====================================
+        yield userModel_1.default.query(`
+      CREATE TABLE IF NOT EXISTS hall_games (
+          hall_game_id SERIAL PRIMARY KEY,
+          team_id INTEGER NOT NULL,
+          game_id INTEGER,
+          game_date DATE NOT NULL,
+          cost INTEGER NOT NULL,
+          source VARCHAR(50) NOT NULL DEFAULT 'manual_import',
+          notes TEXT DEFAULT '',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE,
+          FOREIGN KEY (game_id) REFERENCES games(game_id) ON DELETE SET NULL
+      );
+    `);
+        // =====================================
+        // 12. Hall Payments
+        // Money paid by the team manager to the hall/gym
+        // =====================================
+        yield userModel_1.default.query(`
+      CREATE TABLE IF NOT EXISTS hall_payments (
+          hall_payment_id SERIAL PRIMARY KEY,
+          team_id INTEGER NOT NULL,
+          amount INTEGER NOT NULL,
+          date DATE NOT NULL DEFAULT CURRENT_DATE,
+          notes TEXT DEFAULT '',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE CASCADE
+      );
+    `);
         console.log('Tables created successfully!');
         // Add columns if they don't exist (Migration helper for existing DBs)
         try {
@@ -171,6 +220,19 @@ const createTables = () => __awaiter(void 0, void 0, void 0, function* () {
         CREATE UNIQUE INDEX IF NOT EXISTS payments_team_client_payment_id_uq
         ON payments (team_id, client_payment_id)
         WHERE client_payment_id IS NOT NULL;
+      `);
+            yield userModel_1.default.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS hall_games_team_game_id_uq
+        ON hall_games (team_id, game_id)
+        WHERE game_id IS NOT NULL;
+      `);
+            yield userModel_1.default.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS hall_games_team_game_date_uq
+        ON hall_games (team_id, game_date);
+      `);
+            yield userModel_1.default.query(`
+        CREATE INDEX IF NOT EXISTS hall_payments_team_date_idx
+        ON hall_payments (team_id, date);
       `);
         }
         catch (e) {

@@ -13,6 +13,7 @@ export function registerGameRoutes(router: Router): void {
       enlistedPlayers,
       base_cost,
       notes,
+      hall_cost,
       force_base_cost,
       specific_player_costs,
       specific_player_notes,
@@ -44,17 +45,27 @@ export function registerGameRoutes(router: Router): void {
       }
 
       let gameId: number;
+      let gameDateForHall = date || new Date();
+      const parsedHallCost =
+        hall_cost === undefined || hall_cost === null || hall_cost === ''
+          ? null
+          : parseInt(String(hall_cost), 10);
+      const hallCostOverride =
+        parsedHallCost !== null && Number.isFinite(parsedHallCost)
+          ? Math.max(0, parsedHallCost)
+          : null;
 
       // 3. Check if Game Session Already Exists
       if (gameSessionId) {
         const existingGameRes = await pool.query(
-          'SELECT game_id FROM games WHERE game_session_id = $1 AND team_id = $2',
+          'SELECT game_id, date FROM games WHERE game_session_id = $1 AND team_id = $2',
           [gameSessionId, team_id]
         );
 
         if (existingGameRes.rows.length > 0) {
           // Game session exists, use existing game_id
           gameId = existingGameRes.rows[0].game_id;
+          gameDateForHall = existingGameRes.rows[0].date;
           console.log(`Adding players to existing game session: ${gameSessionId}`);
         } else {
           // Create new game session
@@ -66,6 +77,7 @@ export function registerGameRoutes(router: Router): void {
           const gameValues = [team_id, date || new Date(), costPerGame, notes || '', gameSessionId];
           const gameResult = await pool.query(gameQuery, gameValues);
           gameId = gameResult.rows[0].game_id;
+          gameDateForHall = gameValues[1];
           console.log(`Created new game session: ${gameSessionId}`);
         }
       } else {
@@ -78,7 +90,53 @@ export function registerGameRoutes(router: Router): void {
         const gameValues = [team_id, date || new Date(), costPerGame, notes || ''];
         const gameResult = await pool.query(gameQuery, gameValues);
         gameId = gameResult.rows[0].game_id;
+        gameDateForHall = gameValues[1];
       }
+
+      await pool.query(
+        `
+          WITH settings AS (
+            INSERT INTO hall_settings (
+              team_id,
+              default_game_cost,
+              tracking_start_date,
+              opening_note
+            )
+            VALUES (
+              $1,
+              200,
+              '2025-10-05',
+              'Paid 4000 on 2025-09-11, covered through 2025-10-04'
+            )
+            ON CONFLICT (team_id) DO UPDATE
+              SET updated_at = hall_settings.updated_at
+            RETURNING default_game_cost
+          )
+          INSERT INTO hall_games (team_id, game_id, game_date, cost, source, notes)
+          VALUES (
+            $1,
+            $2,
+            $3::date,
+            COALESCE($4, (SELECT default_game_cost FROM settings), 200),
+            'saved_game',
+            $5
+          )
+          ON CONFLICT (team_id, game_date)
+          DO UPDATE SET
+            game_id = COALESCE(hall_games.game_id, EXCLUDED.game_id),
+            source = 'saved_game',
+            cost = CASE
+              WHEN $4::int IS NULL THEN hall_games.cost
+              ELSE EXCLUDED.cost
+            END,
+            notes = CASE
+              WHEN COALESCE(hall_games.notes, '') = '' THEN EXCLUDED.notes
+              ELSE hall_games.notes
+            END,
+            updated_at = CURRENT_TIMESTAMP
+        `,
+        [team_id, gameId, gameDateForHall, hallCostOverride, notes || '']
+      );
 
       // 4. Create Attendance Records
       if (enlistedPlayers && enlistedPlayers.length > 0) {
