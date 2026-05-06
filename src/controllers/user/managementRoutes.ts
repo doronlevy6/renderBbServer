@@ -212,8 +212,9 @@ export function registerManagementRoutes(router: Router): void {
           res.status(400).json({ success: false, message: 'Team identification failed' });
           return;
         }
+        const currentUsername = Array.isArray(username) ? username[0] : username;
         const user = await userService.updateUser(
-          username,
+          currentUsername,
           normalizedUsername,
           normalizedEmail,
           normalizedPassword,

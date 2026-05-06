@@ -189,7 +189,8 @@ function registerManagementRoutes(router) {
                 res.status(400).json({ success: false, message: 'Team identification failed' });
                 return;
             }
-            const user = yield userService_1.default.updateUser(username, normalizedUsername, normalizedEmail, normalizedPassword, requesterTeamId);
+            const currentUsername = Array.isArray(username) ? username[0] : username;
+            const user = yield userService_1.default.updateUser(currentUsername, normalizedUsername, normalizedEmail, normalizedPassword, requesterTeamId);
             (0, socket_1.emitToTeam)(requesterTeamId, 'financeSummaryUpdated', {
                 success: true,
                 team_id: requesterTeamId,
