@@ -16,6 +16,11 @@ exports.registerFinanceReportRoutes = registerFinanceReportRoutes;
 const userModel_1 = __importDefault(require("../../models/userModel"));
 const verifyToken_1 = require("../verifyToken");
 const authz_1 = require("../authz");
+const firstParam = (value) => {
+    if (Array.isArray(value))
+        return value[0] || '';
+    return value || '';
+};
 function getPlayerFinancialPayload(teamId, username) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c, _d, _e;
@@ -94,7 +99,7 @@ function registerFinanceReportRoutes(router) {
     }));
     // Financial details: manager can read any team member, player can read only self.
     router.get('/player-financials/:username', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
-        const { username } = req.params;
+        const username = firstParam(req.params.username);
         const team_id = (0, authz_1.getTeamId)(req);
         const requester = (0, authz_1.getUsername)(req);
         const manager = (0, authz_1.isManager)(req);
@@ -118,7 +123,7 @@ function registerFinanceReportRoutes(router) {
     // Lightweight endpoint for player balance (for Welcome Page)
     router.get('/player-balance/:username', verifyToken_1.verifyToken, (req, res) => __awaiter(this, void 0, void 0, function* () {
         var _a, _b;
-        const { username } = req.params;
+        const username = firstParam(req.params.username);
         const team_id = (0, authz_1.getTeamId)(req);
         const requester = (0, authz_1.getUsername)(req);
         const manager = (0, authz_1.isManager)(req);

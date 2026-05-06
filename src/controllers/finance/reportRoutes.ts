@@ -20,6 +20,11 @@ interface PlayerFinancialPayload {
   };
 }
 
+const firstParam = (value: string | string[] | undefined): string => {
+  if (Array.isArray(value)) return value[0] || '';
+  return value || '';
+};
+
 async function getPlayerFinancialPayload(
   teamId: number,
   username: string
@@ -123,7 +128,7 @@ export function registerFinanceReportRoutes(router: Router): void {
 
   // Financial details: manager can read any team member, player can read only self.
   router.get('/player-financials/:username', verifyToken, async (req: Request, res: Response) => {
-    const { username } = req.params;
+    const username = firstParam(req.params.username);
     const team_id = getTeamId(req);
     const requester = getUsername(req);
     const manager = isManager(req);
@@ -151,7 +156,7 @@ export function registerFinanceReportRoutes(router: Router): void {
 
   // Lightweight endpoint for player balance (for Welcome Page)
   router.get('/player-balance/:username', verifyToken, async (req: Request, res: Response) => {
-    const { username } = req.params;
+    const username = firstParam(req.params.username);
     const team_id = getTeamId(req);
     const requester = getUsername(req);
     const manager = isManager(req);
