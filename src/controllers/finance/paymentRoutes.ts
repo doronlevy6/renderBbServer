@@ -118,8 +118,26 @@ export function registerPaymentRoutes(router: Router): void {
           console.log(
             `[payments:add][${traceId}] email status team=${team_id} username=${username} status=${emailStatus}${emailReason ? ` reason=${emailReason}` : ''}`
           );
+          emitToTeam(team_id, 'financeSummaryUpdated', {
+            team_id,
+            username,
+            source: 'payment-email-status',
+            email_status: emailStatus,
+            email_reason: emailReason,
+            trace_id: traceId,
+            at: new Date().toISOString(),
+          });
         } catch (emailError) {
           console.error(`[payments:add][${traceId}] Failed to send payment confirmation email:`, emailError);
+          emitToTeam(team_id, 'financeSummaryUpdated', {
+            team_id,
+            username,
+            source: 'payment-email-status',
+            email_status: 'failed',
+            email_reason: 'send_failed',
+            trace_id: traceId,
+            at: new Date().toISOString(),
+          });
         }
       })();
     } catch (error: any) {
