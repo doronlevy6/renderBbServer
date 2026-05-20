@@ -4,6 +4,29 @@ import { verifyToken } from '../verifyToken';
 import { getTeamId, requireManager } from '../authz';
 import { emitToTeam } from '../../socket/socket';
 
+const toOptionalInt = (value: any): number | null => {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = parseInt(String(value), 10);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const buildGameSessionId = (date: any, time: any): string | null => {
+  if (!date || !time) return null;
+  const dateOnly = String(date).split('T')[0];
+  return `${dateOnly}_${time}`;
+};
+
+const emitFinanceUpdate = (
+  teamId: number,
+  payload: Record<string, any>
+): void => {
+  emitToTeam(teamId, 'financeSummaryUpdated', {
+    team_id: teamId,
+    ...payload,
+    at: new Date().toISOString(),
+  });
+};
+
 export function registerGameRoutes(router: Router): void {
   // Game recording is restricted to managers only.
   router.post('/record-game', verifyToken, requireManager, async (req: Request, res: Response) => {
@@ -184,12 +207,10 @@ export function registerGameRoutes(router: Router): void {
         }
       }
 
-      emitToTeam(team_id, 'financeSummaryUpdated', {
-        team_id,
+      emitFinanceUpdate(team_id, {
         game_id: gameId,
         game_session_id: gameSessionId,
         source: 'record-game',
-        at: new Date().toISOString(),
       });
 
       res.status(200).json({ success: true, message: 'Game recorded successfully', gameId, gameSessionId });
@@ -221,16 +242,284 @@ export function registerGameRoutes(router: Router): void {
         res.status(404).json({ success: false, message: 'Attendance record not found' });
         return;
       }
-      emitToTeam(team_id, 'financeSummaryUpdated', {
-        team_id,
+      emitFinanceUpdate(team_id, {
         attendance_id,
         source: 'delete-attendance',
-        at: new Date().toISOString(),
       });
 
       res.status(200).json({ success: true, message: 'Game record deleted for player' });
     } catch (error: any) {
       console.error('Error deleting attendance:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  });
+
+  router.put('/game-sessions/:game_session_id', verifyToken, requireManager, async (req: Request, res: Response) => {
+    const { game_session_id } = req.params;
+    const team_id = getTeamId(req);
+    const { date, time, base_cost, notes, hall_cost } = req.body;
+
+    if (!team_id) {
+      res.status(400).json({ success: false, message: 'Team identification failed' });
+      return;
+    }
+
+    const baseCost = toOptionalInt(base_cost);
+    const hallCost = toOptionalInt(hall_cost);
+    const nextSessionId = buildGameSessionId(date, time);
+    const nextDate = date || null;
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const currentGameRes = await client.query(
+        'SELECT game_id, date, base_cost, notes, game_session_id FROM games WHERE game_session_id = $1 AND team_id = $2 FOR UPDATE',
+        [game_session_id, team_id]
+      );
+
+      if (currentGameRes.rows.length === 0) {
+        await client.query('ROLLBACK');
+        res.status(404).json({ success: false, message: 'Game session not found' });
+        return;
+      }
+
+      const currentGame = currentGameRes.rows[0];
+      const targetSessionId = nextSessionId || currentGame.game_session_id;
+
+      if (targetSessionId !== currentGame.game_session_id) {
+        const conflictRes = await client.query(
+          'SELECT game_id FROM games WHERE game_session_id = $1 AND game_id <> $2',
+          [targetSessionId, currentGame.game_id]
+        );
+        if (conflictRes.rows.length > 0) {
+          await client.query('ROLLBACK');
+          res.status(409).json({
+            success: false,
+            duplicate: true,
+            message: 'Another game already uses this date and time',
+          });
+          return;
+        }
+      }
+
+      const updateGameRes = await client.query(
+        `
+          UPDATE games
+          SET
+            date = COALESCE($1::timestamp, date),
+            base_cost = COALESCE($2::int, base_cost),
+            notes = COALESCE($3::text, notes),
+            game_session_id = $4
+          WHERE game_id = $5 AND team_id = $6
+          RETURNING game_id, game_session_id, date, base_cost, notes
+        `,
+        [
+          nextDate,
+          baseCost,
+          notes === undefined ? null : String(notes),
+          targetSessionId,
+          currentGame.game_id,
+          team_id,
+        ]
+      );
+
+      if (nextDate || hallCost !== null || notes !== undefined) {
+        await client.query(
+          `
+            UPDATE hall_games
+            SET
+              game_date = COALESCE($1::date, game_date),
+              cost = COALESCE($2::int, cost),
+              notes = CASE
+                WHEN $3::text IS NULL THEN notes
+                ELSE $3::text
+              END,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE team_id = $4 AND game_id = $5
+          `,
+          [
+            nextDate,
+            hallCost,
+            notes === undefined ? null : String(notes),
+            team_id,
+            currentGame.game_id,
+          ]
+        );
+      }
+
+      await client.query('COMMIT');
+
+      const game = updateGameRes.rows[0];
+      emitFinanceUpdate(team_id, {
+        game_id: game.game_id,
+        game_session_id: game.game_session_id,
+        source: 'game-session-update',
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Game session updated',
+        game,
+      });
+    } catch (error: any) {
+      await client.query('ROLLBACK');
+      console.error('Error updating game session:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    } finally {
+      client.release();
+    }
+  });
+
+  router.post('/game-sessions/:game_session_id/players', verifyToken, requireManager, async (req: Request, res: Response) => {
+    const { game_session_id } = req.params;
+    const team_id = getTeamId(req);
+    const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    const appliedCostInput = toOptionalInt(req.body.applied_cost);
+    const adjustmentNote = req.body.adjustment_note === undefined
+      ? ''
+      : String(req.body.adjustment_note);
+
+    if (!team_id) {
+      res.status(400).json({ success: false, message: 'Team identification failed' });
+      return;
+    }
+    if (!username) {
+      res.status(400).json({ success: false, message: 'Player is required' });
+      return;
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const gameRes = await client.query(
+        'SELECT game_id, base_cost FROM games WHERE game_session_id = $1 AND team_id = $2 FOR UPDATE',
+        [game_session_id, team_id]
+      );
+      if (gameRes.rows.length === 0) {
+        await client.query('ROLLBACK');
+        res.status(404).json({ success: false, message: 'Game session not found' });
+        return;
+      }
+
+      const userRes = await client.query(
+        'SELECT username, custom_game_cost FROM users WHERE username = $1 AND team_id = $2',
+        [username, team_id]
+      );
+      if (userRes.rows.length === 0) {
+        await client.query('ROLLBACK');
+        res.status(404).json({ success: false, message: 'Player not found in team' });
+        return;
+      }
+
+      const game = gameRes.rows[0];
+      const existingRes = await client.query(
+        'SELECT attendance_id FROM game_attendance WHERE game_id = $1 AND username = $2',
+        [game.game_id, username]
+      );
+      if (existingRes.rows.length > 0) {
+        await client.query('ROLLBACK');
+        res.status(409).json({
+          success: false,
+          duplicate: true,
+          message: 'Player already exists in this game session',
+        });
+        return;
+      }
+
+      const defaultCost = userRes.rows[0].custom_game_cost ?? game.base_cost ?? 0;
+      const appliedCost = appliedCostInput ?? defaultCost;
+      const insertRes = await client.query(
+        `
+          INSERT INTO game_attendance (game_id, username, applied_cost, adjustment_note)
+          VALUES ($1, $2, $3, $4)
+          RETURNING attendance_id, username, applied_cost, adjustment_note
+        `,
+        [game.game_id, username, appliedCost, adjustmentNote]
+      );
+
+      await client.query('COMMIT');
+
+      emitFinanceUpdate(team_id, {
+        game_id: game.game_id,
+        game_session_id,
+        username,
+        source: 'game-session-add-player',
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Player added to game session',
+        player: insertRes.rows[0],
+      });
+    } catch (error: any) {
+      await client.query('ROLLBACK');
+      console.error('Error adding player to game session:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    } finally {
+      client.release();
+    }
+  });
+
+  router.put('/game-attendance/:attendance_id', verifyToken, requireManager, async (req: Request, res: Response) => {
+    const { attendance_id } = req.params;
+    const team_id = getTeamId(req);
+    const appliedCost = toOptionalInt(req.body.applied_cost);
+    const adjustmentNote = req.body.adjustment_note === undefined
+      ? null
+      : String(req.body.adjustment_note);
+
+    if (!team_id) {
+      res.status(400).json({ success: false, message: 'Team identification failed' });
+      return;
+    }
+
+    if (appliedCost === null && adjustmentNote === null) {
+      res.status(400).json({ success: false, message: 'No changes provided' });
+      return;
+    }
+
+    try {
+      const updateRes = await pool.query(
+        `
+          UPDATE game_attendance ga
+          SET
+            applied_cost = COALESCE($1::int, ga.applied_cost),
+            adjustment_note = CASE
+              WHEN $2::text IS NULL THEN ga.adjustment_note
+              ELSE $2::text
+            END
+          FROM games g
+          WHERE ga.attendance_id = $3
+            AND ga.game_id = g.game_id
+            AND g.team_id = $4
+          RETURNING ga.attendance_id, ga.username, ga.applied_cost, ga.adjustment_note, g.game_id, g.game_session_id
+        `,
+        [appliedCost, adjustmentNote, attendance_id, team_id]
+      );
+
+      if (updateRes.rows.length === 0) {
+        res.status(404).json({ success: false, message: 'Attendance record not found' });
+        return;
+      }
+
+      const player = updateRes.rows[0];
+      emitFinanceUpdate(team_id, {
+        attendance_id,
+        game_id: player.game_id,
+        game_session_id: player.game_session_id,
+        username: player.username,
+        source: 'game-attendance-update',
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Game attendance updated',
+        player,
+      });
+    } catch (error: any) {
+      console.error('Error updating game attendance:', error);
       res.status(500).json({ success: false, message: 'Internal server error' });
     }
   });
