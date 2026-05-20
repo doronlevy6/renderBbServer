@@ -83,34 +83,30 @@ function registerPaymentRoutes(router) {
                 source: 'add-payment',
                 at: new Date().toISOString(),
             });
-            // Send payment confirmation email
-            let emailStatus = 'skipped';
-            let emailReason = null;
-            try {
-                const emailResult = yield (0, emailService_1.sendPaymentConfirmationEmail)(userRes.rows[0].email, username, Number(amount), method, paymentDate);
-                emailStatus = emailResult.sent
-                    ? 'sent'
-                    : emailResult.attempted
-                        ? 'failed'
-                        : 'skipped';
-                emailReason = emailResult.reason || null;
-                console.log(`[payments:add][${traceId}] email status team=${team_id} username=${username} status=${emailStatus}${emailReason ? ` reason=${emailReason}` : ''}`);
-            }
-            catch (emailError) {
-                // Log but don't fail the payment if email fails
-                console.error(`[payments:add][${traceId}] Failed to send payment confirmation email:`, emailError);
-                emailStatus = 'failed';
-                emailReason = 'send_failed';
-            }
             res
                 .status(200)
                 .json({
                 success: true,
                 message: 'Payment recorded successfully',
-                email_status: emailStatus,
-                email_reason: emailReason,
+                email_status: 'pending',
+                email_reason: null,
                 trace_id: traceId,
             });
+            void (() => __awaiter(this, void 0, void 0, function* () {
+                try {
+                    const emailResult = yield (0, emailService_1.sendPaymentConfirmationEmail)(userRes.rows[0].email, username, Number(amount), method, paymentDate);
+                    const emailStatus = emailResult.sent
+                        ? 'sent'
+                        : emailResult.attempted
+                            ? 'failed'
+                            : 'skipped';
+                    const emailReason = emailResult.reason || null;
+                    console.log(`[payments:add][${traceId}] email status team=${team_id} username=${username} status=${emailStatus}${emailReason ? ` reason=${emailReason}` : ''}`);
+                }
+                catch (emailError) {
+                    console.error(`[payments:add][${traceId}] Failed to send payment confirmation email:`, emailError);
+                }
+            }))();
         }
         catch (error) {
             console.error(`[payments:add][${traceId}] failed team=${team_id} username=${username} amount=${amount} method=${method}`, error);
