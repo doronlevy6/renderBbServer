@@ -156,6 +156,7 @@ print_menu() {
 11) Deploy Web to GitHub Pages
 12) Deploy Server to Production (main)
 13) Restart App Only (FE + BE, keep infra)
+14) Bootstrap New Machine
  0) Exit
 ==============================================================
 EOF
@@ -239,6 +240,11 @@ main() {
         run_step_wait_for_app \
           "Start App Only" \
           "OPEN_PGADMIN_UI=0 START_PGADMIN_CONTAINER=0 FRONTEND_API_MODE=local BACKEND_DB_MODE=dev START_APP_PROCESSES=1 ./scripts/start_full_dev_environment.sh"
+        ;;
+      14)
+        run_step \
+          "Bootstrap New Machine" \
+          "./scripts/bootstrap_new_machine.sh"
         ;;
       0)
         echo "Bye."

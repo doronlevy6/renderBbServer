@@ -5,6 +5,11 @@
 - `BB_flutter`
 - `BB_web`
 
+להקמה ראשונית במחשב חדש:
+
+- קרא את `NEW_MACHINE_SETUP.md`.
+- הרץ את `./scripts/bootstrap_new_machine.sh`.
+
 ## 1. מבנה הכפתורים
 
 מעכשיו יש 3 סוגי כפתורים:
