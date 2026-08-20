@@ -139,12 +139,12 @@ class UserService {
     rankings: Ranking[],
     teamId: number
   ): Promise<void> {
+    // Upsert only the rated players present in this submission. Rankings for
+    // players NOT included (e.g. guests hidden by the current filter) are left
+    // untouched, instead of being wiped by a blanket delete of the rater's rows.
+    const client = await pool.connect();
     try {
-      // Delete existing rankings for the rater
-      await pool.query(
-        'DELETE FROM player_rankings WHERE rater_username = $1',
-        [rater_username]
-      );
+      await client.query('BEGIN');
 
       for (let ranking of rankings) {
         // UPDATED: destructuring with new param names
@@ -157,9 +157,18 @@ class UserService {
           param5, // was shootingRange
           param6, // was reboundSkills
         } = ranking;
-        await pool.query(
-          // UPDATED: use new column names param1 ... param6
-          'INSERT INTO player_rankings (rater_username, rated_username, param1, param2, param3, param4, param5, param6, team_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+        await client.query(
+          // Insert-or-update keyed on the (rater_username, rated_username) primary key.
+          `INSERT INTO player_rankings (rater_username, rated_username, param1, param2, param3, param4, param5, param6, team_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           ON CONFLICT (rater_username, rated_username) DO UPDATE SET
+             param1 = EXCLUDED.param1,
+             param2 = EXCLUDED.param2,
+             param3 = EXCLUDED.param3,
+             param4 = EXCLUDED.param4,
+             param5 = EXCLUDED.param5,
+             param6 = EXCLUDED.param6,
+             team_id = EXCLUDED.team_id`,
           [
             rater_username,
             username,
@@ -173,9 +182,14 @@ class UserService {
           ]
         );
       }
+
+      await client.query('COMMIT');
     } catch (err: any) {
+      await client.query('ROLLBACK');
       console.error(err);
       throw new Error('Failed to store player rankings');
+    } finally {
+      client.release();
     }
   }
 
